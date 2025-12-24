@@ -6,6 +6,11 @@ const LIBRARY_DIR_VARIABLE: &str = "VAPOURSYNTH_LIB_DIR";
 fn main() {
     // Make sure the build script is re-run if our env variable is changed.
     println!("cargo:rerun-if-env-changed={}", LIBRARY_DIR_VARIABLE);
+    println!("cargo:rerun-if-changed=headers/wrapper.h");
+    println!("cargo:rerun-if-changed=headers/VapourSynth4.h");
+    println!("cargo:rerun-if-changed=headers/VSScript4.h");
+
+    generate_bindings();
 
     // These should always be set when a build script is run
     let target = env::var("TARGET").unwrap();
@@ -46,6 +51,21 @@ fn main() {
 
         println!("cargo:rustc-link-lib={}", vsscript_lib_name);
     }
+}
+
+fn generate_bindings() {
+    // Generate bindings
+    let bindings = bindgen::Builder::default()
+        .header("headers/wrapper.h")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .generate()
+        .expect("Unable to generate bindings");
+
+    // Write the bindings to the $OUT_DIR/bindings.rs file
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings!");
 }
 
 // Returns the default library dirs on Windows.
@@ -94,10 +114,10 @@ fn get_default_macos_library_dir(target: &str, host: &str) -> Vec<String> {
     }
 
     // Use $HOMEBREW_PREFIX if set and not cross-compiling
-    if host == target {
-        if let Ok(prefix) = env::var("HOMEBREW_PREFIX") {
-            return vec![format!("{}/lib", prefix)];
-        }
+    if host == target
+        && let Ok(prefix) = env::var("HOMEBREW_PREFIX")
+    {
+        return vec![format!("{}/lib", prefix)];
     }
 
     // Otherwise, return the default library dir

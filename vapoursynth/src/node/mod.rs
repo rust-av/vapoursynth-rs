@@ -12,42 +12,15 @@ use vapoursynth_sys as ffi;
 use crate::api::API;
 use crate::frame::FrameRef;
 use crate::plugins::FrameContext;
-use crate::prelude::Property;
 use crate::video_info::VideoInfo;
 
 mod errors;
 pub use self::errors::GetFrameError;
 
-bitflags! {
-    /// Node flags.
-    pub struct Flags: i32 {
-        /// This flag indicates that the frames returned by the filter should not be cached. "Fast"
-        /// filters should set this to reduce cache bloat.
-        const NO_CACHE = ffi::VSNodeFlags_nfNoCache.0;
-        /// This flag must not be used in third-party filters. It is used to mark instances of the
-        /// built-in Cache filter. Strange things may happen to your filter if you use this flag.
-        const IS_CACHE = ffi::VSNodeFlags_nfIsCache.0;
-
-        /// This flag should be used by filters which prefer linear access, like source filters,
-        /// where seeking around can cause significant slowdowns. This flag only has any effect if
-        /// the filter using it is immediately followed by an instance of the built-in Cache
-        /// filter.
-        #[cfg(feature = "gte-vapoursynth-api-33")]
-        const MAKE_LINEAR = ffi::VSNodeFlags_nfMakeLinear.0;
-    }
-}
-
-impl From<ffi::VSNodeFlags> for Flags {
-    #[inline]
-    fn from(flags: ffi::VSNodeFlags) -> Self {
-        Self::from_bits_truncate(flags.0)
-    }
-}
-
 /// A reference to a node in the constructed filter graph.
 #[derive(Debug)]
 pub struct Node<'core> {
-    handle: NonNull<ffi::VSNodeRef>,
+    handle: NonNull<ffi::VSNode>,
     _owner: PhantomData<&'core ()>,
 }
 
@@ -80,7 +53,7 @@ impl<'core> Node<'core> {
     /// # Safety
     /// The caller must ensure `handle` and the lifetime is valid and API is cached.
     #[inline]
-    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSNodeRef) -> Self {
+    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSNode) -> Self {
         Self {
             handle: NonNull::new_unchecked(handle),
             _owner: PhantomData,
@@ -89,7 +62,7 @@ impl<'core> Node<'core> {
 
     /// Returns the underlying pointer.
     #[inline]
-    pub(crate) fn ptr(&self) -> *mut ffi::VSNodeRef {
+    pub(crate) fn ptr(&self) -> *mut ffi::VSNode {
         self.handle.as_ptr()
     }
 
@@ -115,16 +88,6 @@ impl<'core> Node<'core> {
 
         let vi = &self.info();
 
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        if let Property::Constant(total) = vi.num_frames {
-            if n >= total {
-                let err_cstring =
-                    CString::new("Requested frame number beyond the last one").unwrap();
-                return Err(GetFrameError::new(Cow::Owned(err_cstring)));
-            }
-        }
-
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         if n >= vi.num_frames {
             let err_cstring = CString::new("Requested frame number beyond the last one").unwrap();
             return Err(GetFrameError::new(Cow::Owned(err_cstring)));
@@ -133,8 +96,7 @@ impl<'core> Node<'core> {
         // Kinda arbitrary. Same value as used in vsvfw.
         const ERROR_BUF_CAPACITY: usize = 32 * 1024;
 
-        let mut err_buf = vec![0; ERROR_BUF_CAPACITY];
-        let mut err_buf = err_buf.into_boxed_slice();
+        let mut err_buf = vec![0; ERROR_BUF_CAPACITY].into_boxed_slice();
 
         let handle =
             unsafe { API::get_cached().get_frame(n as i32, self.handle.as_ptr(), &mut err_buf) };
@@ -196,11 +158,11 @@ impl<'core> Node<'core> {
             }
         }
 
-        unsafe extern "system" fn c_callback(
+        unsafe extern "C" fn c_callback(
             user_data: *mut c_void,
-            frame: *const ffi::VSFrameRef,
+            frame: *const ffi::VSFrame,
             n: i32,
-            node: *mut ffi::VSNodeRef,
+            node: *mut ffi::VSNode,
             error_msg: *const c_char,
         ) {
             // The actual lifetime isn't 'static, it's 'core, but we don't really have a way of

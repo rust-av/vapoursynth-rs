@@ -9,8 +9,10 @@ pub enum ValueType {
     Int,
     Float,
     Data,
-    Node,
-    Frame,
+    VideoNode,
+    AudioNode,
+    VideoFrame,
+    AudioFrame,
     Function,
 }
 

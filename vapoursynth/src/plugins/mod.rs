@@ -309,7 +309,7 @@ mod private {
 
     impl Sealed for i64 {}
     impl Sealed for f64 {}
-    impl<'map> Sealed for &'map [u8] {}
+    impl Sealed for &[u8] {}
     impl<'elem> Sealed for Node<'elem> {}
     impl<'elem> Sealed for FrameRef<'elem> {}
     impl<'elem> Sealed for Function<'elem> {}

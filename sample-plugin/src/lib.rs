@@ -13,7 +13,6 @@ use vapoursynth::core::CoreRef;
 use vapoursynth::format::FormatID;
 use vapoursynth::function::Function;
 use vapoursynth::map::ValueIter;
-use vapoursynth::node::Flags;
 use vapoursynth::plugins::*;
 use vapoursynth::prelude::*;
 use vapoursynth::video_info::{Framerate, Resolution, VideoInfo};
@@ -160,14 +159,13 @@ struct RandomNoise {
 impl<'core> Filter<'core> for RandomNoise {
     fn video_info(&self, _api: API, core: CoreRef<'core>) -> Vec<VideoInfo<'core>> {
         vec![VideoInfo {
-            format: core.get_format(self.format_id).unwrap().into(),
+            format: core.get_format(self.format_id).unwrap(),
             resolution: self.resolution.into(),
             framerate: self.framerate.into(),
 
             // useless for some API versions, required for others
             #[allow(clippy::useless_conversion)]
             num_frames: self.length.into(),
-            flags: Flags::empty(),
         }]
     }
 

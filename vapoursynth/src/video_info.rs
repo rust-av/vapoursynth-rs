@@ -2,11 +2,10 @@
 
 use std::fmt::Debug;
 use std::ops::Deref;
-use std::ptr;
+
 use vapoursynth_sys as ffi;
 
 use crate::format::Format;
-use crate::node;
 
 /// Represents video resolution.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -43,7 +42,7 @@ pub enum Property<T: Debug + Clone + Copy + Eq + PartialEq> {
 #[derive(Debug, Copy, Clone)]
 pub struct VideoInfo<'core> {
     /// Format of the clip.
-    pub format: Property<Format<'core>>,
+    pub format: Format<'core>,
 
     /// Framerate of the clip.
     pub framerate: Property<Framerate>,
@@ -52,15 +51,7 @@ pub struct VideoInfo<'core> {
     pub resolution: Property<Resolution>,
 
     /// Length of the clip, greater than 0.
-    #[cfg(feature = "gte-vapoursynth-api-32")]
     pub num_frames: usize,
-
-    /// Length of the clip.
-    #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-    pub num_frames: Property<usize>,
-
-    /// The flags of this clip.
-    pub flags: node::Flags,
 }
 
 impl<'core> VideoInfo<'core> {
@@ -69,7 +60,7 @@ impl<'core> VideoInfo<'core> {
     /// # Safety
     /// The caller must ensure `ptr` and the lifetime is valid.
     pub(crate) unsafe fn from_ptr(ptr: *const ffi::VSVideoInfo) -> Self {
-        let info = &*ptr;
+        let info = unsafe { &*ptr };
 
         debug_assert!(info.fpsNum >= 0);
         debug_assert!(info.fpsDen >= 0);
@@ -77,11 +68,7 @@ impl<'core> VideoInfo<'core> {
         debug_assert!(info.height >= 0);
         debug_assert!(info.numFrames >= 0);
 
-        let format = if info.format.is_null() {
-            Property::Variable
-        } else {
-            Property::Constant(Format::from_ptr(info.format))
-        };
+        let format = unsafe { Format::from_ptr(&info.format) };
 
         let framerate = if info.fpsNum == 0 {
             debug_assert!(info.fpsDen == 0);
@@ -105,19 +92,9 @@ impl<'core> VideoInfo<'core> {
             })
         };
 
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         let num_frames = {
             debug_assert!(info.numFrames != 0);
             info.numFrames as _
-        };
-
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        let num_frames = {
-            if info.numFrames == 0 {
-                Property::Variable
-            } else {
-                Property::Constant(info.numFrames as _)
-            }
         };
 
         Self {
@@ -125,16 +102,12 @@ impl<'core> VideoInfo<'core> {
             framerate,
             resolution,
             num_frames,
-            flags: ffi::VSNodeFlags(info.flags).into(),
         }
     }
 
     /// Converts the Rust struct into a C struct.
     pub(crate) fn ffi_type(self) -> ffi::VSVideoInfo {
-        let format = match self.format {
-            Property::Variable => ptr::null(),
-            Property::Constant(x) => x.deref(),
-        };
+        let format = self.format.deref();
 
         let (fps_num, fps_den) = match self.framerate {
             Property::Variable => (0, 0),
@@ -149,25 +122,15 @@ impl<'core> VideoInfo<'core> {
             Property::Constant(Resolution { width, height }) => (width as i32, height as i32),
         };
 
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         let num_frames = self.num_frames as i32;
 
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        let num_frames = match self.num_frames {
-            Property::Variable => 0,
-            Property::Constant(x) => x as i32,
-        };
-
-        let flags = self.flags.bits();
-
         ffi::VSVideoInfo {
-            format,
+            format: *format,
             fpsNum: fps_num,
             fpsDen: fps_den,
             width,
             height,
             numFrames: num_frames,
-            flags,
         }
     }
 }

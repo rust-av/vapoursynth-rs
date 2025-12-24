@@ -1,6 +1,4 @@
 use std::ffi::{CStr, CString};
-use std::fs::File;
-use std::io::Read;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::ptr;
@@ -24,16 +22,6 @@ pub enum EvalFlags {
     SetWorkingDir,
 }
 
-impl EvalFlags {
-    #[inline]
-    fn ffi_type(self) -> ::std::os::raw::c_int {
-        match self {
-            EvalFlags::Nothing => 0,
-            EvalFlags::SetWorkingDir => ffi::VSEvalFlags::efSetWorkingDir as _,
-        }
-    }
-}
-
 /// Contains two possible variants of arguments to `Environment::evaluate_script()`.
 #[derive(Clone, Copy)]
 enum EvaluateScriptArgs<'a> {
@@ -55,8 +43,9 @@ unsafe impl Sync for Environment {}
 impl Drop for Environment {
     #[inline]
     fn drop(&mut self) {
+        let api = VSScriptAPI::get().expect("VSScript API not available");
         unsafe {
-            ffi::vsscript_freeScript(self.handle.as_ptr());
+            (api.handle().freeScript.unwrap())(self.handle.as_ptr());
         }
     }
 }
@@ -68,7 +57,8 @@ impl Environment {
     /// This function must only be called if an error is present.
     #[inline]
     unsafe fn error(&self) -> CString {
-        let message = ffi::vsscript_getError(self.handle.as_ptr());
+        let api = VSScriptAPI::get().expect("VSScript API not available");
+        let message = (api.handle().getError.unwrap())(self.handle.as_ptr());
         CStr::from_ptr(message).to_owned()
     }
 
@@ -79,50 +69,64 @@ impl Environment {
     pub fn new() -> Result<Self> {
         maybe_initialize();
 
-        let mut handle = ptr::null_mut();
-        let rv = unsafe { call_vsscript!(ffi::vsscript_createScript(&mut handle)) };
-        let environment = Self {
-            handle: unsafe { NonNull::new_unchecked(handle) },
-        };
+        let api = VSScriptAPI::get().expect("VSScript API not available");
+        let handle = unsafe { (api.handle().createScript.unwrap())(ptr::null_mut()) };
 
-        if rv != 0 {
-            Err(VSScriptError::new(unsafe { environment.error() }).into())
+        if handle.is_null() {
+            Err(Error::ScriptCreationFailed)
         } else {
-            Ok(environment)
+            Ok(Self {
+                handle: unsafe { NonNull::new_unchecked(handle) },
+            })
         }
     }
 
-    /// Calls `vsscript_evaluateScript()`.
+    /// Evaluates a script using the VSScript API.
     ///
     /// `self` is taken by a mutable reference mainly to ensure the atomicity of a call to
-    /// `vsscript_evaluateScript()` (a function that could produce an error) and the following call
-    /// to `vsscript_getError()`. If atomicity is not enforced, another thread could perform some
+    /// `evaluateBuffer/evaluateFile` (a function that could produce an error) and the following call
+    /// to `getError()`. If atomicity is not enforced, another thread could perform some
     /// operation between these two and clear or change the error message.
     fn evaluate_script(&mut self, args: EvaluateScriptArgs) -> Result<()> {
-        let (script, path, flags) = match args {
-            EvaluateScriptArgs::Script(script) => (script.to_owned(), None, EvalFlags::Nothing),
-            EvaluateScriptArgs::File(path, flags) => {
-                let mut file = File::open(path).map_err(Error::FileOpen)?;
-                let mut script = String::new();
-                file.read_to_string(&mut script).map_err(Error::FileRead)?;
+        let api = VSScriptAPI::get().expect("VSScript API not available");
 
-                // vsscript throws an error if it's not valid UTF-8 anyway.
-                let path = path.to_str().ok_or(Error::PathInvalidUnicode)?;
-                let path = CString::new(path)?;
-
-                (script, Some(path), flags)
+        let rv = match args {
+            EvaluateScriptArgs::Script(script) => {
+                let script = CString::new(script)?;
+                let filename = CString::new("<string>").unwrap();
+                unsafe {
+                    (api.handle().evaluateBuffer.unwrap())(
+                        self.handle.as_ptr(),
+                        script.as_ptr(),
+                        filename.as_ptr(),
+                    )
+                }
             }
-        };
+            EvaluateScriptArgs::File(path, flags) => {
+                // Set working directory flag if requested
+                if flags == EvalFlags::SetWorkingDir {
+                    unsafe {
+                        (api.handle().evalSetWorkingDir.unwrap())(self.handle.as_ptr(), 1);
+                    }
+                }
 
-        let script = CString::new(script)?;
+                // vsscript throws an error if the path is not valid UTF-8 anyway.
+                let path_str = path.to_str().ok_or(Error::PathInvalidUnicode)?;
+                let path_cstr = CString::new(path_str)?;
 
-        let rv = unsafe {
-            call_vsscript!(ffi::vsscript_evaluateScript(
-                &mut self.handle.as_ptr(),
-                script.as_ptr(),
-                path.as_ref().map(|p| p.as_ptr()).unwrap_or(ptr::null()),
-                flags.ffi_type(),
-            ))
+                let rv = unsafe {
+                    (api.handle().evaluateFile.unwrap())(self.handle.as_ptr(), path_cstr.as_ptr())
+                };
+
+                // Reset working directory flag if it was set
+                if flags == EvalFlags::SetWorkingDir {
+                    unsafe {
+                        (api.handle().evalSetWorkingDir.unwrap())(self.handle.as_ptr(), 0);
+                    }
+                }
+
+                rv
+            }
         };
 
         if rv != 0 {
@@ -161,25 +165,26 @@ impl Environment {
     }
 
     /// Clears the script environment.
+    ///
+    /// Note: In VapourSynth v4, this is a no-op. To clear the environment,
+    /// drop the Environment and create a new one.
     #[inline]
     pub fn clear(&self) {
-        unsafe {
-            ffi::vsscript_clearEnvironment(self.handle.as_ptr());
-        }
+        // The clearEnvironment function was removed in VapourSynth v4.
+        // Users should drop and recreate the Environment instead.
     }
 
     /// Retrieves a node from the script environment. A node in the script must have been marked
     /// for output with the requested index.
-    #[cfg(all(
-        not(feature = "gte-vsscript-api-31"),
-        feature = "vapoursynth-functions"
-    ))]
+    #[cfg(all(not(feature = "vsscript-functions"), feature = "vapoursynth-functions"))]
     #[inline]
     pub fn get_output(&self, index: i32) -> Result<Node> {
         // Node needs the API.
         API::get().ok_or(Error::NoAPI)?;
 
-        let node_handle = unsafe { ffi::vsscript_getOutput(self.handle.as_ptr(), index) };
+        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
+        let node_handle =
+            unsafe { (vsscript_api.handle().getOutputNode.unwrap())(self.handle.as_ptr(), index) };
         if node_handle.is_null() {
             Err(Error::NoOutput)
         } else {
@@ -189,48 +194,54 @@ impl Environment {
 
     /// Retrieves a node from the script environment. A node in the script must have been marked
     /// for output with the requested index. The second node, if any, contains the alpha clip.
-    #[cfg(all(
-        feature = "gte-vsscript-api-31",
-        any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-    ))]
+    #[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
     #[inline]
-    pub fn get_output(&self, index: i32) -> Result<(Node, Option<Node>)> {
+    pub fn get_output(&self, index: i32) -> Result<(Node<'_>, Option<Node<'_>>)> {
         // Node needs the API.
         API::get().ok_or(Error::NoAPI)?;
 
-        let mut alpha_handle = ptr::null_mut();
+        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
         let node_handle =
-            unsafe { ffi::vsscript_getOutput2(self.handle.as_ptr(), index, &mut alpha_handle) };
+            unsafe { (vsscript_api.handle().getOutputNode.unwrap())(self.handle.as_ptr(), index) };
 
         if node_handle.is_null() {
             return Err(Error::NoOutput);
         }
 
         let node = unsafe { Node::from_ptr(node_handle) };
-        let alpha_node = unsafe { alpha_handle.as_mut().map(|p| Node::from_ptr(p)) };
+
+        // Get the alpha node separately
+        let alpha_handle = unsafe {
+            (vsscript_api.handle().getOutputAlphaNode.unwrap())(self.handle.as_ptr(), index)
+        };
+        let alpha_node = if alpha_handle.is_null() {
+            None
+        } else {
+            Some(unsafe { Node::from_ptr(alpha_handle) })
+        };
 
         Ok((node, alpha_node))
     }
 
     /// Cancels a node set for output. The node will no longer be available to `get_output()`.
+    ///
+    /// Note: In VapourSynth v4, this function has been removed. This is now a no-op that always
+    /// returns Ok. To clear outputs, drop the Environment and create a new one.
     #[inline]
-    pub fn clear_output(&self, index: i32) -> Result<()> {
-        let rv = unsafe { ffi::vsscript_clearOutput(self.handle.as_ptr(), index) };
-        if rv != 0 {
-            Err(Error::NoOutput)
-        } else {
-            Ok(())
-        }
+    pub fn clear_output(&self, _index: i32) -> Result<()> {
+        // The clearOutput function was removed in VapourSynth v4.
+        Ok(())
     }
 
     /// Retrieves the VapourSynth core that was created in the script environment. If a VapourSynth
     /// core has not been created yet, it will be created now, with the default options.
-    #[cfg(any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32"))]
-    pub fn get_core(&self) -> Result<CoreRef> {
+    #[cfg(any(feature = "vapoursynth-functions", feature = "vsscript-functions"))]
+    pub fn get_core(&self) -> Result<CoreRef<'_>> {
         // CoreRef needs the API.
         API::get().ok_or(Error::NoAPI)?;
 
-        let ptr = unsafe { ffi::vsscript_getCore(self.handle.as_ptr()) };
+        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
+        let ptr = unsafe { (vsscript_api.handle().getCore.unwrap())(self.handle.as_ptr()) };
         if ptr.is_null() {
             Err(Error::NoCore)
         } else {
@@ -240,9 +251,14 @@ impl Environment {
 
     /// Retrieves a variable from the script environment.
     pub fn get_variable(&self, name: &str, map: &mut Map) -> Result<()> {
+        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
         let name = CString::new(name)?;
         let rv = unsafe {
-            ffi::vsscript_getVariable(self.handle.as_ptr(), name.as_ptr(), map.deref_mut())
+            (vsscript_api.handle().getVariable.unwrap())(
+                self.handle.as_ptr(),
+                name.as_ptr(),
+                map.deref_mut(),
+            )
         };
         if rv != 0 {
             Err(Error::NoSuchVariable)
@@ -253,7 +269,10 @@ impl Environment {
 
     /// Sets variables in the script environment.
     pub fn set_variables(&self, variables: &Map) -> Result<()> {
-        let rv = unsafe { ffi::vsscript_setVariable(self.handle.as_ptr(), variables.deref()) };
+        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
+        let rv = unsafe {
+            (vsscript_api.handle().setVariables.unwrap())(self.handle.as_ptr(), variables.deref())
+        };
         if rv != 0 {
             Err(Error::NoSuchVariable)
         } else {
@@ -262,13 +281,12 @@ impl Environment {
     }
 
     /// Deletes a variable from the script environment.
-    pub fn clear_variable(&self, name: &str) -> Result<()> {
-        let name = CString::new(name)?;
-        let rv = unsafe { ffi::vsscript_clearVariable(self.handle.as_ptr(), name.as_ptr()) };
-        if rv != 0 {
-            Err(Error::NoSuchVariable)
-        } else {
-            Ok(())
-        }
+    ///
+    /// Note: In VapourSynth v4, the clearVariable function has been removed.
+    /// This is now a no-op that always returns Ok.
+    #[inline]
+    pub fn clear_variable(&self, _name: &str) -> Result<()> {
+        // The clearVariable function was removed in VapourSynth v4.
+        Ok(())
     }
 }

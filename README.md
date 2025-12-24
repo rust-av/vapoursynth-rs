@@ -31,21 +31,12 @@ Raw bindings to [VapourSynth](https://github.com/vapoursynth/vapoursynth).
 
 ## Supported Versions
 
-All VapourSynth and VSScript API versions starting with 3.0 are supported. By default the crates use the 3.0 feature set. To enable higher API version support, enable one of the following Cargo features:
-
-* `vapoursynth-api-31` for VapourSynth API 3.1 (R26)
-* `vapoursynth-api-32` for VapourSynth API 3.2 (R27)
-* `vapoursynth-api-33` for VapourSynth API 3.3 (R30)
-* `vapoursynth-api-34` for VapourSynth API 3.4 (R30)
-* `vapoursynth-api-35` for VapourSynth API 3.5 (R38)
-* `vapoursynth-api-36` for VapourSynth API 3.6 (R47)
-* `vsscript-api-31` for VSScript API 3.1
-* `vsscript-api-32` for VSScript API 3.2
+All VapourSynth and VSScript API versions starting with 4.0 are supported. By default the crates use the 4.0 feature set.
 
 To enable linking to VapourSynth or VSScript functions, enable the following Cargo features:
 
-* `vapoursynth-functions` for VapourSynth functions (`getVapourSynthAPI()`)
-* `vsscript-functions` for VSScript functions (`vsscript_*()`)
+- `vapoursynth-functions` for VapourSynth functions (`getVapourSynthAPI()`)
+- `vsscript-functions` for VSScript functions (`vsscript_*()`)
 
 ## Building
 
@@ -57,7 +48,7 @@ On Windows the easiest way is to use the VapourSynth installer (make sure the Va
 
 Licensed under either of
 
-* Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
-* MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.

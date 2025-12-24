@@ -2,10 +2,7 @@
 // The main difference is what the errors look like.
 #![allow(unused)]
 
-#[cfg(all(
-    feature = "vsscript-functions",
-    any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-))]
+#[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
 mod inner {
     #![allow(clippy::cast_lossless, clippy::mutex_atomic)]
     extern crate clap;
@@ -17,12 +14,12 @@ mod inner {
     use std::ffi::OsStr;
     use std::fmt::Debug;
     use std::fs::File;
-    use std::io::{self, stdout, Stdout, Write};
+    use std::io::{self, Stdout, Write, stdout};
     use std::ops::Deref;
     use std::sync::{Arc, Condvar, Mutex};
     use std::time::Instant;
 
-    use anyhow::{anyhow, bail, ensure, Context, Error};
+    use anyhow::{Context, Error, anyhow, bail, ensure};
 
     use self::clap::{Arg, Command};
     use self::num_rational::Ratio;
@@ -128,18 +125,7 @@ mod inner {
             map_or_variable(&info.resolution, |x| format!("{}", x.height))
         )?;
 
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         writeln!(writer, "Frames: {}", info.num_frames)?;
-
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        writeln!(
-            writer,
-            "Frames: {}",
-            match info.num_frames {
-                Property::Variable => "Unknown".to_owned(),
-                Property::Constant(x) => format!("{}", x),
-            }
-        )?;
 
         writeln!(
             writer,
@@ -152,22 +138,18 @@ mod inner {
             ))
         )?;
 
-        match info.format {
-            Property::Variable => writeln!(writer, "Format Name: Variable")?,
-            Property::Constant(f) => {
-                writeln!(writer, "Format Name: {}", f.name())?;
-                writeln!(writer, "Color Family: {}", f.color_family())?;
-                writeln!(
-                    writer,
-                    "Alpha: {}",
-                    if alpha.is_some() { "Yes" } else { "No" }
-                )?;
-                writeln!(writer, "Sample Type: {}", f.sample_type())?;
-                writeln!(writer, "Bits: {}", f.bits_per_sample())?;
-                writeln!(writer, "SubSampling W: {}", f.sub_sampling_w())?;
-                writeln!(writer, "SubSampling H: {}", f.sub_sampling_h())?;
-            }
-        }
+        let f = info.format;
+        writeln!(writer, "Format Name: {}", f.name())?;
+        writeln!(writer, "Color Family: {}", f.color_family())?;
+        writeln!(
+            writer,
+            "Alpha: {}",
+            if alpha.is_some() { "Yes" } else { "No" }
+        )?;
+        writeln!(writer, "Sample Type: {}", f.sample_type())?;
+        writeln!(writer, "Bits: {}", f.bits_per_sample())?;
+        writeln!(writer, "SubSampling W: {}", f.sub_sampling_w())?;
+        writeln!(writer, "SubSampling H: {}", f.sub_sampling_h())?;
 
         Ok(())
     }
@@ -175,83 +157,70 @@ mod inner {
     fn print_y4m_header<W: Write>(writer: &mut W, node: &Node) -> Result<(), Error> {
         let info = node.info();
 
-        if let Property::Constant(format) = info.format {
-            write!(writer, "YUV4MPEG2 C")?;
+        let format = info.format;
+        write!(writer, "YUV4MPEG2 C")?;
 
-            match format.color_family() {
-                ColorFamily::Gray => {
-                    write!(writer, "mono")?;
-                    if format.bits_per_sample() > 8 {
-                        write!(writer, "{}", format.bits_per_sample())?;
-                    }
+        match format.color_family() {
+            ColorFamily::Gray => {
+                write!(writer, "mono")?;
+                if format.bits_per_sample() > 8 {
+                    write!(writer, "{}", format.bits_per_sample())?;
                 }
-                ColorFamily::YUV => {
-                    write!(
-                        writer,
-                        "{}",
-                        match (format.sub_sampling_w(), format.sub_sampling_h()) {
-                            (1, 1) => "420",
-                            (1, 0) => "422",
-                            (0, 0) => "444",
-                            (2, 2) => "410",
-                            (2, 0) => "411",
-                            (0, 1) => "440",
-                            _ => bail!("No y4m identifier exists for the current format"),
-                        }
-                    )?;
-
-                    if format.bits_per_sample() > 8 && format.sample_type() == SampleType::Integer {
-                        write!(writer, "p{}", format.bits_per_sample())?;
-                    } else if format.sample_type() == SampleType::Float {
-                        write!(
-                            writer,
-                            "p{}",
-                            match format.bits_per_sample() {
-                                16 => "h",
-                                32 => "s",
-                                64 => "d",
-                                _ => unreachable!(),
-                            }
-                        )?;
-                    }
-                }
-                _ => bail!("No y4m identifier exists for the current format"),
             }
-
-            if let Property::Constant(resolution) = info.resolution {
-                write!(writer, " W{} H{}", resolution.width, resolution.height)?;
-            } else {
-                unreachable!();
-            }
-
-            if let Property::Constant(framerate) = info.framerate {
+            ColorFamily::YUV => {
                 write!(
                     writer,
-                    " F{}:{}",
-                    framerate.numerator, framerate.denominator
+                    "{}",
+                    match (format.sub_sampling_w(), format.sub_sampling_h()) {
+                        (1, 1) => "420",
+                        (1, 0) => "422",
+                        (0, 0) => "444",
+                        (2, 2) => "410",
+                        (2, 0) => "411",
+                        (0, 1) => "440",
+                        _ => bail!("No y4m identifier exists for the current format"),
+                    }
                 )?;
-            } else {
-                unreachable!();
-            }
 
-            #[cfg(feature = "gte-vapoursynth-api-32")]
-            let num_frames = info.num_frames;
-
-            #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-            let num_frames = {
-                if let Property::Constant(num_frames) = info.num_frames {
-                    num_frames
-                } else {
-                    unreachable!();
+                if format.bits_per_sample() > 8 && format.sample_type() == SampleType::Integer {
+                    write!(writer, "p{}", format.bits_per_sample())?;
+                } else if format.sample_type() == SampleType::Float {
+                    write!(
+                        writer,
+                        "p{}",
+                        match format.bits_per_sample() {
+                            16 => "h",
+                            32 => "s",
+                            64 => "d",
+                            _ => unreachable!(),
+                        }
+                    )?;
                 }
-            };
+            }
+            _ => bail!("No y4m identifier exists for the current format"),
+        }
 
-            writeln!(writer, " Ip A0:0 XLENGTH={}", num_frames)?;
-
-            Ok(())
+        if let Property::Constant(resolution) = info.resolution {
+            write!(writer, " W{} H{}", resolution.width, resolution.height)?;
         } else {
             unreachable!();
         }
+
+        if let Property::Constant(framerate) = info.framerate {
+            write!(
+                writer,
+                " F{}:{}",
+                framerate.numerator, framerate.denominator
+            )?;
+        } else {
+            unreachable!();
+        }
+
+        let num_frames = info.num_frames;
+
+        writeln!(writer, " Ip A0:0 XLENGTH={}", num_frames)?;
+
+        Ok(())
     }
 
     // Checks if the frame is completed, that is, we have the frame and, if needed, its alpha part.
@@ -412,15 +381,15 @@ mod inner {
                         state.reorder_map.remove(&next_output_frame).unwrap();
 
                     let frame = frame.unwrap();
-                    if state.error.is_none() {
-                        if let Err(error) = print_frames(
+                    if state.error.is_none()
+                        && let Err(error) = print_frames(
                             &mut state.output_target,
                             parameters,
                             &frame,
                             alpha_frame.as_deref(),
-                        ) {
-                            state.error = Some((n, error));
-                        }
+                        )
+                    {
+                        state.error = Some((n, error));
                     }
 
                     if state.timecodes_file.is_some() && state.error.is_none() {
@@ -757,19 +726,10 @@ mod inner {
             .unwrap_or(Ok(0))
             .context("Couldn't convert the output index to an integer")?;
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let (node, alpha_node) = environment.get_output(output_index).context(format!(
             "Couldn't get the output node at index {}",
             output_index
         ))?;
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, alpha_node) = (
-            environment.get_output(output_index).context(format!(
-                "Couldn't get the output node at index {}",
-                output_index
-            ))?,
-            None::<Node>,
-        );
 
         if matches.is_present("info") {
             print_info(&mut output_target, &node, alpha_node.as_ref())
@@ -782,9 +742,6 @@ mod inner {
             let num_frames = {
                 let info = node.info();
 
-                if let Property::Variable = info.format {
-                    bail!("Cannot output clips with varying format");
-                }
                 if let Property::Variable = info.resolution {
                     bail!("Cannot output clips with varying dimensions");
                 }
@@ -792,21 +749,7 @@ mod inner {
                     bail!("Cannot output clips with varying framerate");
                 }
 
-                #[cfg(feature = "gte-vapoursynth-api-32")]
-                let num_frames = info.num_frames;
-
-                #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-                let num_frames = {
-                    match info.num_frames {
-                        Property::Variable => {
-                            // TODO: make it possible?
-                            bail!("Cannot output clips with unknown length");
-                        }
-                        Property::Constant(x) => x,
-                    }
-                };
-
-                num_frames
+                info.num_frames
             };
 
             let start_frame = matches
@@ -882,17 +825,13 @@ mod inner {
     }
 }
 
-#[cfg(not(all(
-    feature = "vsscript-functions",
-    any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-)))]
+#[cfg(not(all(feature = "vsscript-functions", feature = "vapoursynth-functions")))]
 mod inner {
     use super::*;
 
     pub fn run() -> Result<(), anyhow::Error> {
         anyhow::bail!(
-            "This example requires the `vsscript-functions` and either `vapoursynth-functions` or \
-             `vsscript-api-32` features."
+            "This example requires the `vsscript-functions` and `vapoursynth-functions` features."
         )
     }
 }

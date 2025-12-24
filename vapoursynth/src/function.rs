@@ -14,7 +14,7 @@ use crate::map::{Map, MapRef, MapRefMut};
 /// Holds a reference to a function that may be called.
 #[derive(Debug)]
 pub struct Function<'core> {
-    handle: NonNull<ffi::VSFuncRef>,
+    handle: NonNull<ffi::VSFunction>,
     _owner: PhantomData<&'core ()>,
 }
 
@@ -47,7 +47,7 @@ impl<'core> Function<'core> {
     /// # Safety
     /// The caller must ensure `handle` and the lifetime are valid and API is cached.
     #[inline]
-    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSFuncRef) -> Self {
+    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSFunction) -> Self {
         Self {
             handle: NonNull::new_unchecked(handle),
             _owner: PhantomData,
@@ -56,7 +56,7 @@ impl<'core> Function<'core> {
 
     /// Returns the underlying pointer.
     #[inline]
-    pub(crate) fn ptr(&self) -> *mut ffi::VSFuncRef {
+    pub(crate) fn ptr(&self) -> *mut ffi::VSFunction {
         self.handle.as_ptr()
     }
 
@@ -64,11 +64,11 @@ impl<'core> Function<'core> {
     ///
     /// To indicate an error from the callback, set an error on the output map.
     #[inline]
-    pub fn new<F>(api: API, core: CoreRef<'core>, callback: F) -> Self
+    pub fn new<F>(_api: API, core: CoreRef<'core>, callback: F) -> Self
     where
         F: Fn(API, CoreRef<'core>, &Map<'core>, &mut Map<'core>) + Send + Sync + 'core,
     {
-        unsafe extern "system" fn c_callback<'core, F>(
+        unsafe extern "C" fn c_callback<'core, F>(
             in_: *const ffi::VSMap,
             out: *mut ffi::VSMap,
             user_data: *mut c_void,
@@ -94,7 +94,7 @@ impl<'core> Function<'core> {
             }
         }
 
-        unsafe extern "system" fn c_free<F>(user_data: *mut c_void) {
+        unsafe extern "C" fn c_free<F>(user_data: *mut c_void) {
             drop(Box::from_raw(user_data as *mut F))
         }
 
@@ -102,7 +102,7 @@ impl<'core> Function<'core> {
 
         let handle = unsafe {
             API::get_cached().create_func(
-                c_callback::<'core, F>,
+                Some(c_callback::<'core, F>),
                 Box::into_raw(data) as _,
                 Some(c_free::<F>),
                 core.ptr(),

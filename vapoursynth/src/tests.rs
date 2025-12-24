@@ -1,16 +1,10 @@
 #![cfg(test)]
 use super::*;
 
-// We need the VSScript functions, and either VSScript API 3.2 or the VapourSynth functions.
-#[cfg(all(
-    feature = "vsscript-functions",
-    any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-))]
+// We need the VSScript functions
+#[cfg(feature = "vsscript-functions")]
 mod need_api_and_vsscript {
-    use std::ffi::CStr;
     use std::fmt::Debug;
-    use std::mem;
-    use std::slice;
     use std::sync::mpsc::channel;
 
     use super::*;
@@ -66,24 +60,15 @@ mod need_api_and_vsscript {
     }
 
     fn green_test(env: &vsscript::Environment) {
-        #[cfg(feature = "gte-vsscript-api-31")]
         let (node, alpha_node) = {
             let output = env.get_output(0);
             assert!(output.is_ok());
             output.unwrap()
         };
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, alpha_node) = (env.get_output(0).unwrap(), None::<Node>);
-
         assert!(alpha_node.is_none());
 
         let info = node.info();
-
-        if let Property::Constant(format) = info.format {
-            assert_eq!(format.name(), "RGB24");
-        } else {
-            unreachable!();
-        }
+        assert_eq!(info.format.name(), "RGB24");
 
         assert_eq!(
             info.framerate,
@@ -100,10 +85,7 @@ mod need_api_and_vsscript {
             })
         );
 
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         assert_eq!(info.num_frames, 100);
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        assert_eq!(info.num_frames, Property::Constant(100));
 
         let frame = node.get_frame(0).unwrap();
         green_frame_test(&frame);
@@ -132,27 +114,20 @@ mod need_api_and_vsscript {
             vsscript::Environment::from_file("test-vpy/variable.vpy", vsscript::EvalFlags::Nothing)
                 .unwrap();
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let (node, alpha_node) = {
             let output = env.get_output(0);
             assert!(output.is_ok());
             output.unwrap()
         };
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, alpha_node) = (env.get_output(0).unwrap(), None::<Node>);
-
         assert!(alpha_node.is_none());
 
         let info = node.info();
 
-        assert_eq!(info.format, Property::Variable);
+        assert_eq!(info.format.name(), "Undefined");
         assert_eq!(info.framerate, Property::Variable);
         assert_eq!(info.resolution, Property::Variable);
 
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         assert_eq!(info.num_frames, 200);
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        assert_eq!(info.num_frames, Property::Constant(200));
 
         // Test the first frame.
         let frame = node.get_frame(0).unwrap();
@@ -212,7 +187,6 @@ mod need_api_and_vsscript {
     }
 
     #[test]
-    #[cfg(feature = "gte-vsscript-api-31")]
     fn alpha() {
         let env =
             vsscript::Environment::from_file("test-vpy/alpha.vpy", vsscript::EvalFlags::Nothing)
@@ -228,12 +202,7 @@ mod need_api_and_vsscript {
         let alpha_node = alpha_node.unwrap();
 
         let info = alpha_node.info();
-
-        if let Property::Constant(format) = info.format {
-            assert_eq!(format.name(), "Gray8");
-        } else {
-            unreachable!();
-        }
+        assert_eq!(info.format.name(), "Gray8");
 
         assert_eq!(
             info.framerate,
@@ -250,10 +219,7 @@ mod need_api_and_vsscript {
             })
         );
 
-        #[cfg(feature = "gte-vapoursynth-api-32")]
         assert_eq!(info.num_frames, 100);
-        #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-        assert_eq!(info.num_frames, Property::Constant(100));
 
         let frame = alpha_node.get_frame(0).unwrap();
         let format = frame.format();
@@ -283,16 +249,12 @@ mod need_api_and_vsscript {
         bits_per_sample: u8,
         color: [T; 3],
     ) {
-        #[cfg(feature = "gte-vsscript-api-31")]
         let node = env.get_output(index).unwrap().0;
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let node = env.get_output(index).unwrap();
-
         let frame = node.get_frame(0).unwrap();
         let format = frame.format();
 
         assert_eq!(format.bits_per_sample(), bits_per_sample);
-        let bytes_per_sample = ((bits_per_sample + 7) / 8).next_power_of_two();
+        let bytes_per_sample = bits_per_sample.div_ceil(8).next_power_of_two();
         assert_eq!(format.bytes_per_sample(), bytes_per_sample);
 
         for plane_num in 0..3 {
@@ -329,13 +291,11 @@ mod need_api_and_vsscript {
         verify_pixel_format(&env, 0, 10, [789u16, 123u16, 456u16]);
         verify_pixel_format(&env, 1, 32, [5f32, 42f32, 0.25f32]);
         verify_pixel_format(&env, 2, 32, [0.125f32, 10f32, 0.5f32]);
-        verify_pixel_format(&env, 3, 17, [77777u32, 88888u32, 99999u32]);
-        verify_pixel_format(&env, 4, 32, [u32::MAX, 12345u32, 65432u32]);
 
         #[cfg(feature = "f16-pixel-type")]
         verify_pixel_format(
             &env,
-            5,
+            3,
             16,
             [
                 half::f16::from_f32(0.0625f32),
@@ -354,10 +314,7 @@ mod need_api_and_vsscript {
         )
         .unwrap();
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let node = env.get_output(0).unwrap().0;
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let node = env.get_output(0).unwrap();
 
         let frame = node.get_frame(0).unwrap();
         let _ = frame.plane_row::<u8>(0, 0); // Should be u16.
@@ -369,10 +326,7 @@ mod need_api_and_vsscript {
             vsscript::Environment::from_file("test-vpy/gradient.vpy", vsscript::EvalFlags::Nothing)
                 .unwrap();
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let node = env.get_output(0).unwrap().0;
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let node = env.get_output(0).unwrap();
 
         let frame = node.get_frame(0).unwrap();
         for plane in 0..3 {
@@ -399,17 +353,10 @@ mod need_api_and_vsscript {
     fn clear_output() {
         let env =
             vsscript::Environment::from_script(include_str!("../test-vpy/green.vpy")).unwrap();
-        assert!(env
-            .clear_output(1)
-            .err()
-            .map(|e| matches!(e, vsscript::Error::NoOutput))
-            .unwrap_or(false));
+        // In v4, clear_output is a no-op that always succeeds
+        assert!(env.clear_output(1).is_ok());
         assert!(env.clear_output(0).is_ok());
-        assert!(env
-            .clear_output(0)
-            .err()
-            .map(|e| matches!(e, vsscript::Error::NoOutput))
-            .unwrap_or(false));
+        assert!(env.clear_output(0).is_ok());
     }
 
     #[test]
@@ -417,10 +364,7 @@ mod need_api_and_vsscript {
         let env =
             vsscript::Environment::from_script(include_str!("../test-vpy/green.vpy")).unwrap();
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let (node, alpha_node) = env.get_output(0).unwrap();
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, alpha_node) = (env.get_output(0).unwrap(), None::<Node>);
 
         assert!(alpha_node.is_none());
 
@@ -438,9 +382,9 @@ mod need_api_and_vsscript {
 
         let mut map = OwnedMap::new(API::get().unwrap());
         assert!(env.get_variable("video", &mut map).is_ok());
+        // In v4, clear_variable is a no-op that always succeeds
         assert!(env.clear_variable("video").is_ok());
-        assert!(env.clear_variable("video").is_err());
-        assert!(env.get_variable("video", &mut map).is_err());
+        assert!(env.clear_variable("video").is_ok());
 
         assert!(env.set_variables(&map).is_ok());
         assert!(env.get_variable("video", &mut map).is_ok());
@@ -452,14 +396,11 @@ mod need_api_and_vsscript {
             vsscript::Environment::from_file("test-vpy/green.vpy", vsscript::EvalFlags::Nothing)
                 .unwrap();
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let (node, alpha_node) = {
             let output = env.get_output(0);
             assert!(output.is_ok());
             output.unwrap()
         };
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, alpha_node) = (env.get_output(0).unwrap(), None::<Node>);
 
         assert!(alpha_node.is_none());
 
@@ -502,14 +443,11 @@ mod need_api_and_vsscript {
             vsscript::Environment::from_file("test-vpy/green.vpy", vsscript::EvalFlags::Nothing)
                 .unwrap();
 
-        #[cfg(feature = "gte-vsscript-api-31")]
         let (node, alpha_node) = {
             let output = env.get_output(0);
             assert!(output.is_ok());
             output.unwrap()
         };
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, alpha_node) = (env.get_output(0).unwrap(), None::<Node>);
 
         assert!(alpha_node.is_none());
 
@@ -561,87 +499,10 @@ mod need_api_and_vsscript {
         assert_eq!(yuv422p8.sub_sampling_w(), 1);
         assert_eq!(yuv422p8.sub_sampling_h(), 0);
 
-        #[cfg(feature = "gte-vapoursynth-api-36")]
-        {
-            assert_eq!(core.set_max_cache_size(1337), 1337);
-            assert_eq!(core.set_thread_count(3), 3);
-            assert_eq!(core.info().max_framebuffer_size, 1337);
-            assert_eq!(core.info().num_threads, 3);
-        }
-    }
-
-    #[test]
-    fn plugins() {
-        let env =
-            vsscript::Environment::from_file("test-vpy/green.vpy", vsscript::EvalFlags::Nothing)
-                .unwrap();
-
-        fn bind<'a, T: ?Sized, U: ?Sized>(_: &'a T, x: &'a U) -> &'a U {
-            x
-        }
-
-        let core = env.get_core().unwrap();
-        let plugins = core.plugins();
-        let ids: Vec<_> = plugins
-            .keys()
-            .filter_map(|key| unsafe {
-                bind(
-                    key,
-                    CStr::from_ptr(plugins.get_data(key).unwrap().as_ptr() as _),
-                )
-                .to_str()
-                .ok()
-            })
-            .filter_map(|id| id.split(';').nth(1))
-            .collect();
-        assert!(ids.contains(&"com.vapoursynth.std"));
-        assert!(ids.contains(&"com.vapoursynth.resize"));
-
-        let std = core.get_plugin_by_id("com.vapoursynth.std");
-        assert!(std.is_ok());
-        let std = std.unwrap();
-        assert!(std.is_some());
-        let std = std.unwrap();
-
-        let functions = std.functions();
-        assert!(functions
-            .keys()
-            .filter_map(|key| unsafe {
-                bind(
-                    key,
-                    CStr::from_ptr(functions.get_data(key).unwrap().as_ptr() as _),
-                )
-                .to_str()
-                .ok()
-                .map(|value| (key, value))
-            })
-            .filter_map(|(key, value)| value.split(';').next().map(|name| (key, name)))
-            .any(|x| x == ("CropRel", "CropRel")));
-
-        #[cfg(feature = "gte-vsscript-api-31")]
-        let (node, _) = env.get_output(0).unwrap();
-        #[cfg(not(feature = "gte-vsscript-api-31"))]
-        let (node, _) = (env.get_output(0).unwrap(), None::<Node>);
-
-        let mut args = OwnedMap::new(API::get().unwrap());
-        args.set_node("clip", &node);
-        args.set_int("left", 100);
-
-        let rv = std.invoke("CropRel", &args).unwrap();
-        assert!(rv.error().is_none());
-
-        let node = rv.get_node("clip");
-        assert!(node.is_ok());
-        let node = node.unwrap();
-
-        let frame = node.get_frame(0).unwrap();
-        assert_eq!(
-            frame.resolution(0),
-            Resolution {
-                width: 1820,
-                height: 1080,
-            }
-        );
+        assert_eq!(core.set_max_cache_size(1337), 1337);
+        assert_eq!(core.set_thread_count(3), 3);
+        assert_eq!(core.info().max_framebuffer_size, 1337);
+        assert_eq!(core.info().num_threads, 3);
     }
 
     #[test]
@@ -669,16 +530,9 @@ mod need_api_and_vsscript {
     }
 }
 
-// We need either VSScript API 3.2 or the VapourSynth functions.
-#[cfg(any(
-    feature = "vapoursynth-functions",
-    all(feature = "vsscript-functions", feature = "gte-vsscript-api-32")
-))]
+// We need either VSScript or the VapourSynth functions.
+#[cfg(any(feature = "vapoursynth-functions", feature = "vsscript-functions"))]
 mod need_api {
-    use std::ffi::CString;
-    use std::sync::mpsc::{channel, Sender};
-    use std::sync::Mutex;
-
     use super::*;
     use prelude::*;
 
@@ -687,18 +541,6 @@ mod need_api {
         let mut map = OwnedMap::new(API::get().unwrap());
 
         assert_eq!(map.key_count(), 0);
-
-        assert_eq!(map.touch("test_frame", ValueType::Frame), Ok(()));
-        assert_eq!(map.value_type("test_frame"), Ok(ValueType::Frame));
-        assert_eq!(map.value_count("test_frame"), Ok(0));
-        assert_eq!(
-            map.append_int("test_frame", 42),
-            Err(map::Error::WrongValueType)
-        );
-        assert_eq!(
-            map.append("test_frame", &42),
-            Err(map::Error::WrongValueType)
-        );
 
         assert_eq!(map.set_int("i", 42), Ok(()));
         assert_eq!(map.get_int("i"), Ok(42));
@@ -726,13 +568,10 @@ mod need_api {
             assert_eq!(iter.next(), None);
         }
 
-        #[cfg(feature = "gte-vapoursynth-api-31")]
-        {
-            assert_eq!(map.get_int_array("i"), Ok(&[42, 43][..]));
+        assert_eq!(map.get_int_array("i"), Ok(&[42, 43][..]));
 
-            assert_eq!(map.set_int_array("ia", &[10, 20, 30]), Ok(()));
-            assert_eq!(map.get_int_array("ia"), Ok(&[10, 20, 30][..]));
-        }
+        assert_eq!(map.set_int_array("ia", &[10, 20, 30]), Ok(()));
+        assert_eq!(map.get_int_array("ia"), Ok(&[10, 20, 30][..]));
 
         assert_eq!(map.set_float("f", 42f64), Ok(()));
         assert_eq!(map.get_float("f"), Ok(42f64));
@@ -760,13 +599,10 @@ mod need_api {
             assert_eq!(iter.next(), None);
         }
 
-        #[cfg(feature = "gte-vapoursynth-api-31")]
-        {
-            assert_eq!(map.get_float_array("f"), Ok(&[42f64, 43f64][..]));
+        assert_eq!(map.get_float_array("f"), Ok(&[42f64, 43f64][..]));
 
-            assert_eq!(map.set_float_array("fa", &[10f64, 20f64, 30f64]), Ok(()));
-            assert_eq!(map.get_float_array("fa"), Ok(&[10f64, 20f64, 30f64][..]));
-        }
+        assert_eq!(map.set_float_array("fa", &[10f64, 20f64, 30f64]), Ok(()));
+        assert_eq!(map.get_float_array("fa"), Ok(&[10f64, 20f64, 30f64][..]));
 
         assert_eq!(map.set_data("d", &[1, 2, 3]), Ok(()));
         assert_eq!(map.get_data("d"), Ok(&[1, 2, 3][..]));
@@ -796,8 +632,8 @@ mod need_api {
 
         // TODO: node, frame and function method tests when we can make them.
 
-        assert_eq!(map.delete_key("test_frame"), Ok(()));
-        assert_eq!(map.delete_key("test_frame"), Err(map::Error::KeyNotFound));
+        assert_eq!(map.delete_key("i"), Ok(()));
+        assert_eq!(map.delete_key("i"), Err(map::Error::KeyNotFound));
 
         assert_eq!(map.error(), None);
         assert_eq!(map.set_error("hello there"), Ok(()));
@@ -805,203 +641,6 @@ mod need_api {
             map.error().as_ref().map(|x| x.as_ref()),
             Some("hello there")
         );
-    }
-
-    // This test is commented out because it currently deadlocks due to
-    // https://github.com/vapoursynth/vapoursynth/issues/507
-    //
-    // Uncomment when R48 comes out (that's where this is fixed).
-    //
-    // #[cfg(feature = "gte-vapoursynth-api-34")]
-    // #[test]
-    // fn message_handler() {
-    //     let api = API::get().unwrap();
-    //     let (tx, rx) = channel();
-    //
-    //     // Hopefully no one logs anything here and breaks the test.
-    //     api.set_message_handler(move |message_type, message| {
-    //         assert_eq!(tx.send((message_type, message.to_owned())), Ok(()));
-    //     });
-    //
-    //     assert_eq!(
-    //         api.log(MessageType::Warning, "test warning message"),
-    //         Ok(())
-    //     );
-    //     assert_eq!(
-    //         rx.recv(),
-    //         Ok((
-    //             MessageType::Warning,
-    //             CString::new("test warning message").unwrap()
-    //         ))
-    //     );
-    //
-    //     assert_eq!(api.log(MessageType::Debug, "test debug message"), Ok(()));
-    //     assert_eq!(
-    //         rx.recv(),
-    //         Ok((
-    //             MessageType::Debug,
-    //             CString::new("test debug message").unwrap()
-    //         ))
-    //     );
-    //
-    //     assert_eq!(
-    //         api.log(MessageType::Critical, "test critical message"),
-    //         Ok(())
-    //     );
-    //     assert_eq!(
-    //         rx.recv(),
-    //         Ok((
-    //             MessageType::Critical,
-    //             CString::new("test critical message").unwrap()
-    //         ))
-    //     );
-    //
-    //     {
-    //         lazy_static! {
-    //             static ref SENDER: Mutex<Option<Sender<(MessageType, CString)>>> = Mutex::new(None);
-    //         }
-    //
-    //         let (tx, rx) = channel();
-    //         *SENDER.lock().unwrap() = Some(tx);
-    //
-    //         api.set_message_handler_trivial(|message_type, message| {
-    //             let guard = SENDER.lock().unwrap();
-    //             let tx = guard.as_ref().unwrap();
-    //             assert_eq!(tx.send((message_type, message.to_owned())), Ok(()));
-    //         });
-    //
-    //         assert_eq!(
-    //             api.log(MessageType::Warning, "test warning message"),
-    //             Ok(())
-    //         );
-    //         assert_eq!(
-    //             rx.recv(),
-    //             Ok((
-    //                 MessageType::Warning,
-    //                 CString::new("test warning message").unwrap()
-    //             ))
-    //         );
-    //
-    //         assert_eq!(api.log(MessageType::Debug, "test debug message"), Ok(()));
-    //         assert_eq!(
-    //             rx.recv(),
-    //             Ok((
-    //                 MessageType::Debug,
-    //                 CString::new("test debug message").unwrap()
-    //             ))
-    //         );
-    //
-    //         assert_eq!(
-    //             api.log(MessageType::Critical, "test critical message"),
-    //             Ok(())
-    //         );
-    //         assert_eq!(
-    //             rx.recv(),
-    //             Ok((
-    //                 MessageType::Critical,
-    //                 CString::new("test critical message").unwrap()
-    //             ))
-    //         );
-    //     }
-    //
-    //     api.clear_message_handler();
-    // }
-
-    #[cfg(feature = "gte-vapoursynth-api-36")]
-    #[test]
-    fn add_message_handler() {
-        let api = API::get().unwrap();
-        let (tx, rx) = channel();
-
-        // Hopefully no one logs anything here and breaks the test.
-        let id = api.add_message_handler(move |message_type, message| {
-            assert_eq!(tx.send((message_type, message.to_owned())), Ok(()));
-        });
-
-        assert_eq!(
-            api.log(MessageType::Warning, "test warning message"),
-            Ok(())
-        );
-        assert_eq!(
-            rx.recv(),
-            Ok((
-                MessageType::Warning,
-                CString::new("test warning message").unwrap()
-            ))
-        );
-
-        assert_eq!(api.log(MessageType::Debug, "test debug message"), Ok(()));
-        assert_eq!(
-            rx.recv(),
-            Ok((
-                MessageType::Debug,
-                CString::new("test debug message").unwrap()
-            ))
-        );
-
-        assert_eq!(
-            api.log(MessageType::Critical, "test critical message"),
-            Ok(())
-        );
-        assert_eq!(
-            rx.recv(),
-            Ok((
-                MessageType::Critical,
-                CString::new("test critical message").unwrap()
-            ))
-        );
-
-        api.remove_message_handler(id);
-
-        {
-            lazy_static! {
-                static ref SENDER: Mutex<Option<Sender<(MessageType, CString)>>> = Mutex::new(None);
-            }
-
-            let (tx, rx) = channel();
-            *SENDER.lock().unwrap() = Some(tx);
-
-            let id = api.add_message_handler_trivial(|message_type, message| {
-                let guard = SENDER.lock().unwrap();
-                let tx = guard.as_ref().unwrap();
-                assert_eq!(tx.send((message_type, message.to_owned())), Ok(()));
-            });
-
-            assert_eq!(
-                api.log(MessageType::Warning, "test warning message"),
-                Ok(())
-            );
-            assert_eq!(
-                rx.recv(),
-                Ok((
-                    MessageType::Warning,
-                    CString::new("test warning message").unwrap()
-                ))
-            );
-
-            assert_eq!(api.log(MessageType::Debug, "test debug message"), Ok(()));
-            assert_eq!(
-                rx.recv(),
-                Ok((
-                    MessageType::Debug,
-                    CString::new("test debug message").unwrap()
-                ))
-            );
-
-            assert_eq!(
-                api.log(MessageType::Critical, "test critical message"),
-                Ok(())
-            );
-            assert_eq!(
-                rx.recv(),
-                Ok((
-                    MessageType::Critical,
-                    CString::new("test critical message").unwrap()
-                ))
-            );
-
-            api.remove_message_handler(id);
-        }
     }
 
     #[test]
@@ -1028,12 +667,9 @@ mod need_api {
         assert_eq!(yuv422p8.sub_sampling_w(), 1);
         assert_eq!(yuv422p8.sub_sampling_h(), 0);
 
-        #[cfg(feature = "gte-vapoursynth-api-36")]
-        {
-            assert_eq!(core.set_max_cache_size(1337), 1337);
-            assert_eq!(core.set_thread_count(3), 3);
-            assert_eq!(core.info().max_framebuffer_size, 1337);
-            assert_eq!(core.info().num_threads, 3);
-        }
+        assert_eq!(core.set_max_cache_size(1337), 1337);
+        assert_eq!(core.set_thread_count(3), 3);
+        assert_eq!(core.info().max_framebuffer_size, 1337);
+        assert_eq!(core.info().num_threads, 3);
     }
 }

@@ -16,6 +16,8 @@ pub enum Error {
     InvalidKey(#[from] InvalidKeyError),
     #[error("Couldn't convert to a CString")]
     CStringConversion(#[from] NulError),
+    #[error("An unexpected error occurred")]
+    UnknownError,
 }
 
 /// A specialized `Result` type for `Map` operations.

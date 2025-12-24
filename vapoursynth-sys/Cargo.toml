@@ -1,13 +1,12 @@
 [package]
 name = "vapoursynth-sys"
-edition = "2021"
-version = "0.4.1"                                           # remember to update html_root_url
-authors = ["Ivan Molodetskikh <yalterz@gmail.com>"]
+edition = "2024"
+version = "4.0.0"
 description = "Rust bindings for vapoursynth and vsscript."
 license = "MIT/Apache-2.0"
 build = "build.rs"
 
-readme = "README.md"
+readme = "../README.md"
 documentation = "https://docs.rs/vapoursynth-sys"
 repository = "https://github.com/YaLTeR/vapoursynth-rs"
 keywords = ["vapoursynth", "vsscript", "video", "bindings"]
@@ -20,59 +19,14 @@ appveyor = { repository = "YaLTeR/vapoursynth-rs" }
 [dependencies]
 cfg-if = "1.0.0"
 
+[build-dependencies]
+bindgen = "0.72.1"
+
 [features]
-# Features for enabling higher API versions.
-vapoursynth-api-31 = ["gte-vapoursynth-api-31"]
-vapoursynth-api-32 = ["gte-vapoursynth-api-31", "gte-vapoursynth-api-32"]
-vapoursynth-api-33 = [
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-]
-vapoursynth-api-34 = [
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-    "gte-vapoursynth-api-34",
-]
-vapoursynth-api-35 = [
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-    "gte-vapoursynth-api-34",
-    "gte-vapoursynth-api-35",
-]
-vapoursynth-api-36 = [
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-    "gte-vapoursynth-api-34",
-    "gte-vapoursynth-api-35",
-    "gte-vapoursynth-api-36",
-]
-
-vsscript-api-31 = ["gte-vsscript-api-31"]
-vsscript-api-32 = ["gte-vsscript-api-31", "gte-vsscript-api-32"]
-
+default = ["vapoursynth-functions", "vsscript-functions"]
 # Features for linking to certain functions.
 vapoursynth-functions = []
 vsscript-functions = []
 
-# Utility features, not for outside use.
-gte-vapoursynth-api-31 = []
-gte-vapoursynth-api-32 = []
-gte-vapoursynth-api-33 = []
-gte-vapoursynth-api-34 = []
-gte-vapoursynth-api-35 = []
-gte-vapoursynth-api-36 = []
-
-gte-vsscript-api-31 = []
-gte-vsscript-api-32 = []
-
 [package.metadata.docs.rs]
-features = [
-    "vapoursynth-api-36",
-    "vsscript-api-32",
-    "vapoursynth-functions",
-    "vsscript-functions",
-]
+features = ["vapoursynth-functions", "vsscript-functions"]

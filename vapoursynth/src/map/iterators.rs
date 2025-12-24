@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use super::*;
 
 /// An iterator over the keys of a map.
@@ -109,8 +107,12 @@ macro_rules! impl_value_iter {
 impl_value_iter!(ValueType::Int, i64, get_int_raw_unchecked);
 impl_value_iter!(ValueType::Float, f64, get_float_raw_unchecked);
 impl_value_iter!(ValueType::Data, &'map [u8], get_data_raw_unchecked);
-impl_value_iter!(ValueType::Node, Node<'elem>, get_node_raw_unchecked);
-impl_value_iter!(ValueType::Frame, FrameRef<'elem>, get_frame_raw_unchecked);
+impl_value_iter!(ValueType::VideoNode, Node<'elem>, get_node_raw_unchecked);
+impl_value_iter!(
+    ValueType::VideoFrame,
+    FrameRef<'elem>,
+    get_frame_raw_unchecked
+);
 impl_value_iter!(
     ValueType::Function,
     Function<'elem>,

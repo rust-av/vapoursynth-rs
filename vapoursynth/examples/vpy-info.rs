@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate vapoursynth;
 
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{Context, Error, anyhow, bail};
 
 use std::env;
 use vapoursynth::prelude::*;
@@ -17,10 +17,7 @@ fn usage() {
     );
 }
 
-#[cfg(all(
-    feature = "vsscript-functions",
-    any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-))]
+#[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
 fn print_node_info(node: &Node) {
     use std::fmt::Debug;
 
@@ -38,10 +35,7 @@ fn print_node_info(node: &Node) {
 
     let info = node.info();
 
-    println!(
-        "Format: {}",
-        map_or_variable(&info.format, |x| x.name().to_owned())
-    );
+    println!("Format: {}", info.format.name());
     println!(
         "Resolution: {}",
         map_or_variable(&info.resolution, |x| format!("{}×{}", x.width, x.height))
@@ -56,20 +50,10 @@ fn print_node_info(node: &Node) {
         ))
     );
 
-    #[cfg(feature = "gte-vapoursynth-api-32")]
     println!("Frame count: {}", info.num_frames);
-
-    #[cfg(not(feature = "gte-vapoursynth-api-32"))]
-    println!(
-        "Frame count: {}",
-        map_or_variable(&info.num_frames, |x| format!("{}", x))
-    );
 }
 
-#[cfg(all(
-    feature = "vsscript-functions",
-    any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-))]
+#[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
 fn run() -> Result<(), Error> {
     let filename = env::args()
         .nth(1)
@@ -83,17 +67,9 @@ fn run() -> Result<(), Error> {
         .context("Couldn't get the VapourSynth core")?;
     println!("{}", core.info());
 
-    #[cfg(feature = "gte-vsscript-api-31")]
     let (node, alpha_node) = environment
         .get_output(0)
         .context("Couldn't get the output at index 0")?;
-    #[cfg(not(feature = "gte-vsscript-api-31"))]
-    let (node, alpha_node) = (
-        environment
-            .get_output(0)
-            .context("Couldn't get the output at index 0")?,
-        None::<Node>,
-    );
 
     print_node_info(&node);
 
@@ -146,9 +122,11 @@ fn run() -> Result<(), Error> {
                 ValueType::Int => print_value!(get_int_iter),
                 ValueType::Float => print_value!(get_float_iter),
                 ValueType::Data => print_value!(get_data_iter),
-                ValueType::Node => print_value!(get_node_iter),
-                ValueType::Frame => print_value!(get_frame_iter),
+                ValueType::VideoNode => print_value!(get_node_iter),
+                ValueType::VideoFrame => print_value!(get_frame_iter),
                 ValueType::Function => print_value!(get_function_iter),
+                ValueType::AudioNode => print_value!(get_node_iter),
+                ValueType::AudioFrame => print_value!(get_frame_iter),
             }
         }
 
@@ -163,15 +141,9 @@ fn run() -> Result<(), Error> {
     Ok(())
 }
 
-#[cfg(not(all(
-    feature = "vsscript-functions",
-    any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")
-)))]
+#[cfg(not(all(feature = "vsscript-functions", feature = "vapoursynth-functions")))]
 fn run() -> Result<(), Error> {
-    bail!(
-        "This example requires the `vsscript-functions` and either `vapoursynth-functions` or \
-         `vsscript-api-32` features."
-    )
+    bail!("This example requires the `vsscript-functions` and `vapoursynth-functions` features.")
 }
 
 fn main() -> anyhow::Result<()> {

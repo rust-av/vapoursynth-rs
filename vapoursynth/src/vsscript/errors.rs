@@ -24,6 +24,8 @@ pub enum Error {
     NoOutput,
     #[error("Couldn't get the VapourSynth API")]
     NoAPI,
+    #[error("Failed to create VSScript environment")]
+    ScriptCreationFailed,
 }
 
 impl From<NulError> for Error {

@@ -2,14 +2,14 @@
 
 use std::ffi::CStr;
 use std::fmt::{self, Display};
-use std::marker::PhantomData;
 use std::ops::Deref;
+use std::ptr;
 use vapoursynth_sys as ffi;
 
 /// Contains information about a video format.
 #[derive(Debug, Clone, Copy)]
 pub struct Format<'core> {
-    handle: &'core ffi::VSFormat,
+    handle: &'core ffi::VSVideoFormat,
 }
 
 /// Preset VapourSynth formats.
@@ -17,65 +17,102 @@ pub struct Format<'core> {
 /// The presets suffixed with H and S have floating point sample type. The H and S suffixes stand
 /// for half precision and single precision, respectively.
 ///
-/// The compat formats are the only packed formats in VapourSynth. Everything else is planar. They
-/// exist for compatibility with Avisynth plugins. They are not to be implemented in native
-/// VapourSynth plugins.
-#[allow(clippy::unreadable_literal)]
+/// Format IDs in VapourSynth v4 are computed using the formula:
+/// `(colorFamily << 28) | (sampleType << 24) | (bitsPerSample << 16) | (subSamplingW << 8) | (subSamplingH << 0)`
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum PresetFormat {
-    Gray8 = 1000010,
-    Gray16 = 1000011,
-    GrayH = 1000012,
-    GrayS = 1000013,
-    YUV420P8 = 3000010,
-    YUV422P8 = 3000011,
-    YUV444P8 = 3000012,
-    YUV410P8 = 3000013,
-    YUV411P8 = 3000014,
-    YUV440P8 = 3000015,
-    YUV420P9 = 3000016,
-    YUV422P9 = 3000017,
-    YUV444P9 = 3000018,
-    YUV420P10 = 3000019,
-    YUV422P10 = 3000020,
-    YUV444P10 = 3000021,
-    YUV420P16 = 3000022,
-    YUV422P16 = 3000023,
-    YUV444P16 = 3000024,
-    YUV444PH = 3000025,
-    YUV444PS = 3000026,
-    YUV420P12 = 3000027,
-    YUV422P12 = 3000028,
-    YUV444P12 = 3000029,
-    YUV420P14 = 3000030,
-    YUV422P14 = 3000031,
-    YUV444P14 = 3000032,
-    RGB24 = 2000010,
-    RGB27 = 2000011,
-    RGB30 = 2000012,
-    RGB48 = 2000013,
-    RGBH = 2000014,
-    RGBS = 2000015,
-    CompatBGR32 = 9000010,
-    CompatYUY2 = 9000011,
+    None = 0,
+
+    Gray8 = make_video_id(ColorFamily::Gray, SampleType::Integer, 8, 0, 0),
+    Gray9 = make_video_id(ColorFamily::Gray, SampleType::Integer, 9, 0, 0),
+    Gray10 = make_video_id(ColorFamily::Gray, SampleType::Integer, 10, 0, 0),
+    Gray12 = make_video_id(ColorFamily::Gray, SampleType::Integer, 12, 0, 0),
+    Gray14 = make_video_id(ColorFamily::Gray, SampleType::Integer, 14, 0, 0),
+    Gray16 = make_video_id(ColorFamily::Gray, SampleType::Integer, 16, 0, 0),
+    Gray32 = make_video_id(ColorFamily::Gray, SampleType::Integer, 32, 0, 0),
+
+    GrayH = make_video_id(ColorFamily::Gray, SampleType::Float, 16, 0, 0),
+    GrayS = make_video_id(ColorFamily::Gray, SampleType::Float, 32, 0, 0),
+
+    YUV410P8 = make_video_id(ColorFamily::YUV, SampleType::Integer, 8, 2, 2),
+    YUV411P8 = make_video_id(ColorFamily::YUV, SampleType::Integer, 8, 2, 0),
+    YUV440P8 = make_video_id(ColorFamily::YUV, SampleType::Integer, 8, 0, 1),
+
+    YUV420P8 = make_video_id(ColorFamily::YUV, SampleType::Integer, 8, 1, 1),
+    YUV422P8 = make_video_id(ColorFamily::YUV, SampleType::Integer, 8, 1, 0),
+    YUV444P8 = make_video_id(ColorFamily::YUV, SampleType::Integer, 8, 0, 0),
+
+    YUV420P9 = make_video_id(ColorFamily::YUV, SampleType::Integer, 9, 1, 1),
+    YUV422P9 = make_video_id(ColorFamily::YUV, SampleType::Integer, 9, 1, 0),
+    YUV444P9 = make_video_id(ColorFamily::YUV, SampleType::Integer, 9, 0, 0),
+
+    YUV420P10 = make_video_id(ColorFamily::YUV, SampleType::Integer, 10, 1, 1),
+    YUV422P10 = make_video_id(ColorFamily::YUV, SampleType::Integer, 10, 1, 0),
+    YUV444P10 = make_video_id(ColorFamily::YUV, SampleType::Integer, 10, 0, 0),
+
+    YUV420P12 = make_video_id(ColorFamily::YUV, SampleType::Integer, 12, 1, 1),
+    YUV422P12 = make_video_id(ColorFamily::YUV, SampleType::Integer, 12, 1, 0),
+    YUV444P12 = make_video_id(ColorFamily::YUV, SampleType::Integer, 12, 0, 0),
+
+    YUV420P14 = make_video_id(ColorFamily::YUV, SampleType::Integer, 14, 1, 1),
+    YUV422P14 = make_video_id(ColorFamily::YUV, SampleType::Integer, 14, 1, 0),
+    YUV444P14 = make_video_id(ColorFamily::YUV, SampleType::Integer, 14, 0, 0),
+
+    YUV420P16 = make_video_id(ColorFamily::YUV, SampleType::Integer, 16, 1, 1),
+    YUV422P16 = make_video_id(ColorFamily::YUV, SampleType::Integer, 16, 1, 0),
+    YUV444P16 = make_video_id(ColorFamily::YUV, SampleType::Integer, 16, 0, 0),
+
+    YUV420PH = make_video_id(ColorFamily::YUV, SampleType::Float, 16, 1, 1),
+    YUV420PS = make_video_id(ColorFamily::YUV, SampleType::Float, 32, 1, 1),
+    YUV422PH = make_video_id(ColorFamily::YUV, SampleType::Float, 16, 1, 0),
+    YUV422PS = make_video_id(ColorFamily::YUV, SampleType::Float, 32, 1, 0),
+    YUV444PH = make_video_id(ColorFamily::YUV, SampleType::Float, 16, 0, 0),
+    YUV444PS = make_video_id(ColorFamily::YUV, SampleType::Float, 32, 0, 0),
+
+    RGB24 = make_video_id(ColorFamily::RGB, SampleType::Integer, 8, 0, 0),
+    RGB27 = make_video_id(ColorFamily::RGB, SampleType::Integer, 9, 0, 0),
+    RGB30 = make_video_id(ColorFamily::RGB, SampleType::Integer, 10, 0, 0),
+    RGB36 = make_video_id(ColorFamily::RGB, SampleType::Integer, 12, 0, 0),
+    RGB42 = make_video_id(ColorFamily::RGB, SampleType::Integer, 14, 0, 0),
+    RGB48 = make_video_id(ColorFamily::RGB, SampleType::Integer, 16, 0, 0),
+
+    RGBH = make_video_id(ColorFamily::RGB, SampleType::Float, 16, 0, 0),
+    RGBS = make_video_id(ColorFamily::RGB, SampleType::Float, 32, 0, 0),
 }
 
 /// Format color families.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ColorFamily {
-    Gray = 1000000,
-    RGB = 2000000,
-    YUV = 3000000,
-    YCoCg = 4000000,
-    Compat = 9000000,
+    Undefined = 0,
+    Gray = 1,
+    RGB = 2,
+    YUV = 3,
 }
 
 /// Format sample types.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum SampleType {
-    Integer,
-    Float,
+    Integer = 0,
+    Float = 1,
+}
+
+/// Computes a VapourSynth video format ID from its components.
+///
+/// This is equivalent to the C macro:
+/// `VS_MAKE_VIDEO_ID(colorFamily, sampleType, bitsPerSample, subSamplingW, subSamplingH)`
+const fn make_video_id(
+    color_family: ColorFamily,
+    sample_type: SampleType,
+    bits_per_sample: i32,
+    sub_sampling_w: i32,
+    sub_sampling_h: i32,
+) -> i32 {
+    ((color_family as i32) << 28)
+        | ((sample_type as i32) << 24)
+        | (bits_per_sample << 16)
+        | (sub_sampling_w << 8)
+        | sub_sampling_h
 }
 
 /// A unique format identifier.
@@ -93,7 +130,7 @@ impl<'core> Eq for Format<'core> {}
 
 #[doc(hidden)]
 impl<'core> Deref for Format<'core> {
-    type Target = ffi::VSFormat;
+    type Target = ffi::VSVideoFormat;
 
     // Technically this should return `&'core`.
     #[inline]
@@ -108,20 +145,56 @@ impl<'core> Format<'core> {
     /// # Safety
     /// The caller must ensure `ptr` and the lifetime is valid.
     #[inline]
-    pub(crate) unsafe fn from_ptr(ptr: *const ffi::VSFormat) -> Self {
+    pub(crate) unsafe fn from_ptr(ptr: *const ffi::VSVideoFormat) -> Self {
         Self { handle: &*ptr }
     }
 
     /// Gets the unique identifier of this format.
+    ///
+    /// In VapourSynth v4, format IDs are computed from format properties.
     #[inline]
     pub fn id(self) -> FormatID {
-        FormatID(self.handle.id)
+        use crate::api::API;
+
+        // In v4, we compute the format ID from the properties
+        unsafe {
+            let api = API::get_cached();
+            let id = api.query_video_format_id(
+                self.handle.colorFamily,
+                self.handle.sampleType,
+                self.handle.bitsPerSample,
+                self.handle.subSamplingW,
+                self.handle.subSamplingH,
+                ptr::null_mut(), // core parameter not needed for ID query
+            );
+            FormatID(id as i32)
+        }
     }
 
     /// Gets the printable name of this format.
+    ///
+    /// In VapourSynth v4, format names are generated on-demand.
     #[inline]
     pub fn name(self) -> &'core str {
-        unsafe { CStr::from_ptr(&self.handle.name as _).to_str().unwrap() }
+        use crate::api::API;
+
+        // V4 requires a buffer to write the name into
+        // Format names are typically short (e.g., "YUV420P8")
+        const NAME_BUF_SIZE: usize = 64;
+        let mut buf = [0i8; NAME_BUF_SIZE];
+
+        unsafe {
+            let api = API::get_cached();
+            api.get_video_format_name(self.handle as *const _, buf.as_mut_ptr());
+
+            // Convert to Rust string
+            // Note: This creates a temporary string. In v3, this returned a reference
+            // to a static string. In v4, we need to handle this differently.
+            // For now, we leak the string to maintain the 'core lifetime.
+            let cstr = CStr::from_ptr(buf.as_ptr());
+            let string = cstr.to_str().unwrap().to_owned();
+            Box::leak(string.into_boxed_str())
+        }
     }
 
     /// Gets the number of planes of this format.
@@ -136,11 +209,9 @@ impl<'core> Format<'core> {
     #[inline]
     pub fn color_family(self) -> ColorFamily {
         match self.handle.colorFamily {
-            x if x == ffi::VSColorFamily::cmGray as i32 => ColorFamily::Gray,
-            x if x == ffi::VSColorFamily::cmRGB as i32 => ColorFamily::RGB,
-            x if x == ffi::VSColorFamily::cmYUV as i32 => ColorFamily::YUV,
-            x if x == ffi::VSColorFamily::cmYCoCg as i32 => ColorFamily::YCoCg,
-            x if x == ffi::VSColorFamily::cmCompat as i32 => ColorFamily::Compat,
+            x if x == ffi::VSColorFamily_cfGray as i32 => ColorFamily::Gray,
+            x if x == ffi::VSColorFamily_cfRGB as i32 => ColorFamily::RGB,
+            x if x == ffi::VSColorFamily_cfYUV as i32 => ColorFamily::YUV,
             _ => unreachable!(),
         }
     }
@@ -149,8 +220,8 @@ impl<'core> Format<'core> {
     #[inline]
     pub fn sample_type(self) -> SampleType {
         match self.handle.sampleType {
-            x if x == ffi::VSSampleType::stInteger as i32 => SampleType::Integer,
-            x if x == ffi::VSSampleType::stFloat as i32 => SampleType::Float,
+            x if x == ffi::VSSampleType_stInteger as i32 => SampleType::Integer,
+            x if x == ffi::VSSampleType_stFloat as i32 => SampleType::Float,
             _ => unreachable!(),
         }
     }
@@ -200,11 +271,10 @@ impl From<ColorFamily> for ffi::VSColorFamily {
     #[inline]
     fn from(x: ColorFamily) -> Self {
         match x {
-            ColorFamily::Gray => ffi::VSColorFamily::cmGray,
-            ColorFamily::RGB => ffi::VSColorFamily::cmRGB,
-            ColorFamily::YUV => ffi::VSColorFamily::cmYUV,
-            ColorFamily::YCoCg => ffi::VSColorFamily::cmYCoCg,
-            ColorFamily::Compat => ffi::VSColorFamily::cmCompat,
+            ColorFamily::Gray => ffi::VSColorFamily_cfGray,
+            ColorFamily::RGB => ffi::VSColorFamily_cfRGB,
+            ColorFamily::YUV => ffi::VSColorFamily_cfYUV,
+            ColorFamily::Undefined => ffi::VSColorFamily_cfUndefined,
         }
     }
 }
@@ -214,8 +284,8 @@ impl From<SampleType> for ffi::VSSampleType {
     #[inline]
     fn from(x: SampleType) -> Self {
         match x {
-            SampleType::Integer => ffi::VSSampleType::stInteger,
-            SampleType::Float => ffi::VSSampleType::stFloat,
+            SampleType::Integer => ffi::VSSampleType_stInteger,
+            SampleType::Float => ffi::VSSampleType_stFloat,
         }
     }
 }
@@ -229,8 +299,7 @@ impl Display for ColorFamily {
                 ColorFamily::Gray => "Gray",
                 ColorFamily::RGB => "RGB",
                 ColorFamily::YUV => "YUV",
-                ColorFamily::YCoCg => "YCoCg",
-                ColorFamily::Compat => "Compat",
+                ColorFamily::Undefined => "Undefined",
             }
         )
     }

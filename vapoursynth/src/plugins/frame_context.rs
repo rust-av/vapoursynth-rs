@@ -2,8 +2,6 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 use vapoursynth_sys as ffi;
 
-use crate::api::API;
-
 /// A frame context used in filters.
 #[derive(Debug, Clone, Copy)]
 pub struct FrameContext<'a> {
@@ -31,10 +29,16 @@ impl<'a> FrameContext<'a> {
     }
 
     /// Returns the index of the node from which the frame is being requested.
+    ///
+    /// **Deprecated in VapourSynth v4:** This function was removed in v4 and always returns 0.
+    #[deprecated(
+        since = "4.0.0",
+        note = "This function was removed in VapourSynth v4 and always returns 0."
+    )]
     #[inline]
     pub fn output_index(self) -> usize {
-        let index = unsafe { API::get_cached().get_output_index(self.handle.as_ptr()) };
-        debug_assert!(index >= 0);
-        index as _
+        // This function was removed in VapourSynth v4.
+        // Return 0 to maintain API compatibility.
+        0
     }
 }
