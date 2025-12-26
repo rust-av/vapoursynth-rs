@@ -6,30 +6,17 @@ jobs:
   clippy-rustfmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: clippy, rustfmt
       - name: Run rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
       - name: Run clippy on all tests
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all --all-targets --all-features --exclude sample-plugin
+        run: cargo clippy --all --all-targets --all-features --exclude sample-plugin -- -D warnings
       - name: Run clippy on the sample-plugin
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets --package sample-plugin
-          name: sample-plugin
+        run: cargo clippy --all-targets --package sample-plugin -- -D warnings
 
   unix-tests:
     strategy:
@@ -43,16 +30,16 @@ jobs:
           - stable-x86_64-unknown-linux-gnu
         include:
           #  - toolchain: stable-x86_64-apple-darwin
-          #    os: macOS-10.15
+          #    os: macOS-latest
           - toolchain: stable-x86_64-unknown-linux-gnu
             os: ubuntu-latest
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Install VapourSynth on MacOS
-        if: matrix.os == 'macOS-10.15'
+        if: matrix.os == 'macOS-latest'
         run: |
           brew install vapoursynth
       - name: Install VapourSynth on Ubuntu 64-bit
@@ -60,11 +47,9 @@ jobs:
         run: |
           build/script.sh
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
       - name: Run tests
         run: |
           cd vapoursynth
@@ -75,10 +60,7 @@ jobs:
           cargo build --verbose
           cargo run --verbose --bin test
       - name: Run doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --all-features --verbose
+        run: cargo doc --all-features --verbose
       - name: Copy index into the target directory
         if: matrix.toolchain == 'stable-x86_64-unknown-linux-gnu'
         run: |
@@ -88,7 +70,7 @@ jobs:
           matrix.toolchain == 'stable-x86_64-unknown-linux-gnu' &&
           github.event_name == 'push' &&
           github.ref == 'refs/heads/master'
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./target/doc
@@ -107,21 +89,19 @@ jobs:
           - toolchain: stable-x86_64-pc-windows-gnu
             arch: x86_64
 
-    runs-on: windows-2019
+    runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
       - name: Install VapourSynth for Windows 64-bit
         if: matrix.arch == 'x86_64'
         run: |
           build/windows-script.ps1
       - run: rustup set auto-self-update disable
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
       - name: Run tests
         run: |
           $Env:Path += ";C:\Program Files\VapourSynth;"
@@ -139,7 +119,4 @@ jobs:
           cd sample-plugin
           cargo run --verbose --bin test
       - name: Run doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --all-features --verbose
+        run: cargo doc --all-features --verbose
