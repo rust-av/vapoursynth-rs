@@ -27,7 +27,7 @@ mod need_api_and_vsscript {
         assert!(env.get_variable("video", &mut map).is_ok());
         assert_eq!(map.key_count(), 1);
         assert_eq!(map.key(0), "video");
-        let node = map.get_node("video");
+        let node = map.get_video_node("video");
         assert!(node.is_ok());
     }
 

@@ -120,11 +120,10 @@ fn run() -> Result<(), Error> {
                 ValueType::Int => print_value!(get_int_iter),
                 ValueType::Float => print_value!(get_float_iter),
                 ValueType::Data => print_value!(get_data_iter),
-                ValueType::VideoNode => print_value!(get_node_iter),
-                ValueType::VideoFrame => print_value!(get_frame_iter),
+                ValueType::VideoNode => print_value!(get_video_node_iter),
+                ValueType::VideoFrame => print_value!(get_video_frame_iter),
                 ValueType::Function => print_value!(get_function_iter),
-                ValueType::AudioNode => print_value!(get_node_iter),
-                ValueType::AudioFrame => print_value!(get_frame_iter),
+                ValueType::AudioNode | ValueType::AudioFrame => todo!("Not yet implemented"),
             }
         }
 

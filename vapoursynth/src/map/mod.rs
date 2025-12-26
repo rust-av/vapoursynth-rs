@@ -488,14 +488,14 @@ impl<'elem> Map<'elem> {
     ///
     /// This function retrieves the first value associated with the key.
     #[inline]
-    pub fn get_node(&self, key: &str) -> Result<Node<'elem>> {
+    pub fn get_video_node(&self, key: &str) -> Result<Node<'elem>> {
         let key = Map::make_raw_key(key)?;
-        unsafe { self.get_node_raw_unchecked(&key, 0) }
+        unsafe { self.get_video_node_raw_unchecked(&key, 0) }
     }
 
     /// Retrieves nodes from a map.
     #[inline]
-    pub fn get_node_iter<'map>(
+    pub fn get_video_node_iter<'map>(
         &'map self,
         key: &str,
     ) -> Result<ValueIter<'map, 'elem, Node<'elem>>> {
@@ -507,14 +507,14 @@ impl<'elem> Map<'elem> {
     ///
     /// This function retrieves the first value associated with the key.
     #[inline]
-    pub fn get_frame(&self, key: &str) -> Result<FrameRef<'elem>> {
+    pub fn get_video_frame(&self, key: &str) -> Result<FrameRef<'elem>> {
         let key = Map::make_raw_key(key)?;
-        unsafe { self.get_frame_raw_unchecked(&key, 0) }
+        unsafe { self.get_video_frame_raw_unchecked(&key, 0) }
     }
 
     /// Retrieves frames from a map.
     #[inline]
-    pub fn get_frame_iter<'map>(
+    pub fn get_video_frame_iter<'map>(
         &'map self,
         key: &str,
     ) -> Result<ValueIter<'map, 'elem, FrameRef<'elem>>> {
@@ -627,7 +627,7 @@ impl<'elem> Map<'elem> {
     /// # Safety
     /// The caller must ensure `key` is valid.
     #[inline]
-    pub(crate) unsafe fn get_node_raw_unchecked(
+    pub(crate) unsafe fn get_video_node_raw_unchecked(
         &self,
         key: &CStr,
         index: i32,
@@ -645,7 +645,7 @@ impl<'elem> Map<'elem> {
     /// # Safety
     /// The caller must ensure `key` is valid.
     #[inline]
-    pub(crate) unsafe fn get_frame_raw_unchecked(
+    pub(crate) unsafe fn get_video_frame_raw_unchecked(
         &self,
         key: &CStr,
         index: i32,
