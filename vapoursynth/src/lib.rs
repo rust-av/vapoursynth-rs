@@ -10,13 +10,13 @@
 //! well as create VapourSynth filters.
 //!
 //! For an example usage see
-//! [examples/vspipe.rs](https://github.com/YaLTeR/vapoursynth-rs/blob/master/vapoursynth/examples/vspipe.rs),
+//! [examples/vspipe.rs](https://github.com/rust-av/vapoursynth-rs/blob/master/vapoursynth/examples/vspipe.rs),
 //! a complete reimplementation of VapourSynth's
 //! [vspipe](https://github.com/vapoursynth/vapoursynth/blob/master/src/vspipe/vspipe.cpp) in safe
 //! Rust utilizing this crate.
 //!
 //! For a VapourSynth plugin example see
-//! [sample-plugin](https://github.com/YaLTeR/vapoursynth-rs/blob/master/sample-plugin) which
+//! [sample-plugin](https://github.com/rust-av/vapoursynth-rs/blob/master/sample-plugin) which
 //! implements some simple filters.
 //!
 //! ## Short example
@@ -24,7 +24,7 @@
 //! ```no_run
 //! # extern crate vapoursynth;
 //! # use anyhow::Error;
-//! # #[cfg(feature = "vsscript-functions")]
+//! #
 //! # fn foo() -> Result<(), Error> {
 //! use vapoursynth::prelude::*;
 //!
@@ -123,17 +123,12 @@
 //! # }
 //! ```
 //!
-//! Check [sample-plugin](https://github.com/YaLTeR/vapoursynth-rs/blob/master/sample-plugin) for
+//! Check [sample-plugin](https://github.com/rust-av/vapoursynth-rs/blob/master/sample-plugin) for
 //! an example plugin which exports some simple filters.
 //!
 //! ## Supported Versions
 //!
 //! All VapourSynth and VSScript API versions starting with 4.0 are supported.
-//!
-//! To enable linking to VapourSynth or VSScript functions, enable the following Cargo features:
-//!
-//! * `vapoursynth-functions` for VapourSynth functions (`getVapourSynthAPI()`)
-//! * `vsscript-functions` for VSScript functions (`vsscript_*()`)
 //!
 //! ## Building
 //!
@@ -156,9 +151,6 @@ pub extern crate vapoursynth_sys;
 #[doc(hidden)]
 pub use vapoursynth_sys as ffi;
 
-#[cfg(feature = "vsscript-functions")]
-pub mod vsscript;
-
 pub mod api;
 pub mod component;
 pub mod core;
@@ -170,6 +162,7 @@ pub mod node;
 pub mod plugin;
 pub mod plugins;
 pub mod video_info;
+pub mod vsscript;
 
 pub mod prelude {
     //! The VapourSynth prelude.
@@ -183,8 +176,6 @@ pub mod prelude {
     pub use super::node::{GetFrameError, Node};
     pub use super::plugin::Plugin;
     pub use super::video_info::Property;
-
-    #[cfg(feature = "vsscript-functions")]
     pub use super::vsscript::{self, Environment, EvalFlags};
 }
 

@@ -2,9 +2,9 @@
 
 [![crates.io](https://img.shields.io/crates/v/vapoursynth.svg)](https://crates.io/crates/vapoursynth)
 [![Documentation](https://docs.rs/vapoursynth/badge.svg)](https://docs.rs/vapoursynth)
-[![Actions Status](https://github.com/YaLTeR/vapoursynth-rs/workflows/vapoursynth/badge.svg)](https://github.com/YaLTeR/vapoursynth-rs/actions)
+[![Actions Status](https://github.com/rust-av/vapoursynth-rs/workflows/vapoursynth/badge.svg)](https://github.com/rust-av/vapoursynth-rs/actions)
 
-[ChangeLog](https://github.com/YaLTeR/vapoursynth-rs/blob/master/vapoursynth/CHANGELOG.md)
+[ChangeLog](https://github.com/rust-av/vapoursynth-rs/blob/master/vapoursynth/CHANGELOG.md)
 
 [Documentation for the master branch with all features enabled](https://yalter.github.io/vapoursynth-rs)
 
@@ -16,27 +16,22 @@ The primary goal is safety (that is, safe Rust code should not trigger undefined
 
 Most of the VapourSynth API is covered. It's possible to evaluate `.vpy` scripts, access their properties and output, retrieve frames; enumerate loaded plugins and invoke their functions as well as create VapourSynth filters.
 
-For an example usage see [examples/vspipe.rs](https://github.com/YaLTeR/vapoursynth-rs/blob/master/vapoursynth/examples/vspipe.rs), a complete reimplementation of VapourSynth's [vspipe](https://github.com/vapoursynth/vapoursynth/blob/master/src/vspipe/vspipe.cpp) in safe Rust utilizing this crate.
+For an example usage see [examples/vspipe.rs](https://github.com/rust-av/vapoursynth-rs/blob/master/vapoursynth/examples/vspipe.rs), a complete reimplementation of VapourSynth's [vspipe](https://github.com/vapoursynth/vapoursynth/blob/master/src/vspipe/vspipe.cpp) in safe Rust utilizing this crate.
 
-For a VapourSynth plugin example see [sample-plugin](https://github.com/YaLTeR/vapoursynth-rs/blob/master/sample-plugin) which implements some simple filters.
+For a VapourSynth plugin example see [sample-plugin](https://github.com/rust-av/vapoursynth-rs/blob/master/sample-plugin) which implements some simple filters.
 
 ## vapoursynth-sys
 
 [![crates.io](https://img.shields.io/crates/v/vapoursynth-sys.svg)](https://crates.io/crates/vapoursynth-sys)
 [![Documentation](https://docs.rs/vapoursynth-sys/badge.svg)](https://docs.rs/vapoursynth-sys)
 
-[ChangeLog](https://github.com/YaLTeR/vapoursynth-rs/blob/master/vapoursynth-sys/CHANGELOG.md)
+[ChangeLog](https://github.com/rust-av/vapoursynth-rs/blob/master/vapoursynth-sys/CHANGELOG.md)
 
 Raw bindings to [VapourSynth](https://github.com/vapoursynth/vapoursynth).
 
 ## Supported Versions
 
-All VapourSynth and VSScript API versions starting with 4.0 are supported. By default the crates use the 4.0 feature set.
-
-To enable linking to VapourSynth or VSScript functions, enable the following Cargo features:
-
-- `vapoursynth-functions` for VapourSynth functions (`getVapourSynthAPI()`)
-- `vsscript-functions` for VSScript functions (`vsscript_*()`)
+All VapourSynth and VSScript API versions starting with 4.0 are supported. By default the crates use the 4.0 feature set, and link to both the VapourSynth and VSScript libraries.
 
 ## Building
 

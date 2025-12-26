@@ -17,7 +17,6 @@ fn usage() {
     );
 }
 
-#[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
 fn print_node_info(node: &Node) {
     use std::fmt::Debug;
 
@@ -53,7 +52,6 @@ fn print_node_info(node: &Node) {
     println!("Frame count: {}", info.num_frames);
 }
 
-#[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
 fn run() -> Result<(), Error> {
     let filename = env::args()
         .nth(1)
@@ -139,11 +137,6 @@ fn run() -> Result<(), Error> {
     }
 
     Ok(())
-}
-
-#[cfg(not(all(feature = "vsscript-functions", feature = "vapoursynth-functions")))]
-fn run() -> Result<(), Error> {
-    bail!("This example requires the `vsscript-functions` and `vapoursynth-functions` features.")
 }
 
 fn main() -> anyhow::Result<()> {

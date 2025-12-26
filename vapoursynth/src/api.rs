@@ -76,7 +76,6 @@ impl API {
     /// Returns `None` on error, for example if the requested API version (selected with features,
     /// see the crate-level docs) is not supported.
     // If we're linking to VSScript anyway, use the VSScript function.
-    #[cfg(feature = "vsscript-functions")]
     #[inline]
     pub fn get() -> Option<Self> {
         // Check if we already have the API.
@@ -89,39 +88,6 @@ impl API {
             let version = (ffi::VAPOURSYNTH_API_MAJOR << 16 | ffi::VAPOURSYNTH_API_MINOR) as i32;
             let handle =
                 unsafe { (vsscript_api.handle().getVSAPI.unwrap())(version) } as *mut ffi::VSAPI;
-
-            if !handle.is_null() {
-                // If we successfully retrieved the API, cache it.
-                RAW_API.store(handle, Ordering::Relaxed);
-            }
-            handle
-        } else {
-            handle
-        };
-
-        if handle.is_null() {
-            None
-        } else {
-            Some(Self {
-                handle: unsafe { NonNull::new_unchecked(handle) },
-            })
-        }
-    }
-
-    /// Retrieves the VapourSynth API.
-    ///
-    /// Returns `None` on error, for example if the requested API version (selected with features,
-    /// see the crate-level docs) is not supported.
-    #[cfg(all(feature = "vapoursynth-functions", not(feature = "vsscript-functions")))]
-    #[inline]
-    pub fn get() -> Option<Self> {
-        // Check if we already have the API.
-        let handle = RAW_API.load(Ordering::Relaxed);
-
-        let handle = if handle.is_null() {
-            // Attempt retrieving it otherwise.
-            let version = (ffi::VAPOURSYNTH_API_MAJOR << 16 | ffi::VAPOURSYNTH_API_MINOR) as i32;
-            let handle = unsafe { ffi::getVapourSynthAPI(version) } as *mut ffi::VSAPI;
 
             if !handle.is_null() {
                 // If we successfully retrieved the API, cache it.

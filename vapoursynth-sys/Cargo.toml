@@ -1,32 +1,27 @@
 [package]
 name = "vapoursynth-sys"
 edition = "2024"
-version = "4.0.0"
+version = "0.5.0"
 description = "Rust bindings for vapoursynth and vsscript."
 license = "MIT/Apache-2.0"
 build = "build.rs"
 
 readme = "../README.md"
 documentation = "https://docs.rs/vapoursynth-sys"
-repository = "https://github.com/YaLTeR/vapoursynth-rs"
+repository = "https://github.com/rust-av/vapoursynth-rs"
 keywords = ["vapoursynth", "vsscript", "video", "bindings"]
 categories = ["api-bindings", "external-ffi-bindings", "multimedia::video"]
 
 [badges]
-travis-ci = { repository = "YaLTeR/vapoursynth-rs" }
-appveyor = { repository = "YaLTeR/vapoursynth-rs" }
+travis-ci = { repository = "rust-av/vapoursynth-rs" }
+appveyor = { repository = "rust-av/vapoursynth-rs" }
 
 [dependencies]
-cfg-if = "1.0.0"
 
 [build-dependencies]
-bindgen = "0.72.1"
+bindgen = { version = "0.72.1", optional = true }
 
 [features]
-default = ["vapoursynth-functions", "vsscript-functions"]
-# Features for linking to certain functions.
-vapoursynth-functions = []
-vsscript-functions = []
-
-[package.metadata.docs.rs]
-features = ["vapoursynth-functions", "vsscript-functions"]
+default = []
+# Rebuild the bindings, primarily for development
+bindgen = ["dep:bindgen"]

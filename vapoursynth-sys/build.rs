@@ -1,16 +1,19 @@
 use std::env;
 use std::path::PathBuf;
 
-const LIBRARY_DIR_VARIABLE: &str = "VAPOURSYNTH_LIB_DIR";
-
 fn main() {
+    const LIBRARY_DIR_VARIABLE: &str = "VAPOURSYNTH_LIB_DIR";
+
     // Make sure the build script is re-run if our env variable is changed.
     println!("cargo:rerun-if-env-changed={}", LIBRARY_DIR_VARIABLE);
     println!("cargo:rerun-if-changed=headers/wrapper.h");
     println!("cargo:rerun-if-changed=headers/VapourSynth4.h");
     println!("cargo:rerun-if-changed=headers/VSScript4.h");
 
-    generate_bindings();
+    #[cfg(feature = "bindgen")]
+    {
+        generate_bindings();
+    }
 
     // These should always be set when a build script is run
     let target = env::var("TARGET").unwrap();
@@ -38,21 +41,17 @@ fn main() {
     }
 
     // Handle linking to VapourSynth libs.
-    if env::var("CARGO_FEATURE_VAPOURSYNTH_FUNCTIONS").is_ok() {
-        println!("cargo:rustc-link-lib=vapoursynth");
-    }
+    println!("cargo:rustc-link-lib=vapoursynth");
 
-    if env::var("CARGO_FEATURE_VSSCRIPT_FUNCTIONS").is_ok() {
-        let vsscript_lib_name = if targets_windows {
-            "vsscript"
-        } else {
-            "vapoursynth-script"
-        };
-
-        println!("cargo:rustc-link-lib={}", vsscript_lib_name);
-    }
+    let vsscript_lib_name = if targets_windows {
+        "vsscript"
+    } else {
+        "vapoursynth-script"
+    };
+    println!("cargo:rustc-link-lib={}", vsscript_lib_name);
 }
 
+#[cfg(feature = "bindgen")]
 fn generate_bindings() {
     // Generate bindings
     let bindings = bindgen::Builder::default()

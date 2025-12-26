@@ -1,8 +1,6 @@
 #![cfg(test)]
 use super::*;
 
-// We need the VSScript functions
-#[cfg(feature = "vsscript-functions")]
 mod need_api_and_vsscript {
     use std::fmt::Debug;
     use std::sync::mpsc::channel;
@@ -531,7 +529,6 @@ mod need_api_and_vsscript {
 }
 
 // We need either VSScript or the VapourSynth functions.
-#[cfg(any(feature = "vapoursynth-functions", feature = "vsscript-functions"))]
 mod need_api {
     use super::*;
     use prelude::*;

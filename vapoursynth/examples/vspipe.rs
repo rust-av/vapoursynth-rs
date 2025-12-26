@@ -2,7 +2,6 @@
 // The main difference is what the errors look like.
 #![allow(unused)]
 
-#[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
 mod inner {
     #![allow(clippy::cast_lossless, clippy::mutex_atomic)]
     extern crate clap;
@@ -822,17 +821,6 @@ mod inner {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(not(all(feature = "vsscript-functions", feature = "vapoursynth-functions")))]
-mod inner {
-    use super::*;
-
-    pub fn run() -> Result<(), anyhow::Error> {
-        anyhow::bail!(
-            "This example requires the `vsscript-functions` and `vapoursynth-functions` features."
-        )
     }
 }
 

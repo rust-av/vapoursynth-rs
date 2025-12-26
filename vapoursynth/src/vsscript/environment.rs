@@ -175,26 +175,7 @@ impl Environment {
     }
 
     /// Retrieves a node from the script environment. A node in the script must have been marked
-    /// for output with the requested index.
-    #[cfg(all(not(feature = "vsscript-functions"), feature = "vapoursynth-functions"))]
-    #[inline]
-    pub fn get_output(&self, index: i32) -> Result<Node> {
-        // Node needs the API.
-        API::get().ok_or(Error::NoAPI)?;
-
-        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
-        let node_handle =
-            unsafe { (vsscript_api.handle().getOutputNode.unwrap())(self.handle.as_ptr(), index) };
-        if node_handle.is_null() {
-            Err(Error::NoOutput)
-        } else {
-            Ok(unsafe { Node::from_ptr(node_handle) })
-        }
-    }
-
-    /// Retrieves a node from the script environment. A node in the script must have been marked
     /// for output with the requested index. The second node, if any, contains the alpha clip.
-    #[cfg(all(feature = "vsscript-functions", feature = "vapoursynth-functions"))]
     #[inline]
     pub fn get_output(&self, index: i32) -> Result<(Node<'_>, Option<Node<'_>>)> {
         // Node needs the API.
@@ -235,7 +216,6 @@ impl Environment {
 
     /// Retrieves the VapourSynth core that was created in the script environment. If a VapourSynth
     /// core has not been created yet, it will be created now, with the default options.
-    #[cfg(any(feature = "vapoursynth-functions", feature = "vsscript-functions"))]
     pub fn get_core(&self) -> Result<CoreRef<'_>> {
         // CoreRef needs the API.
         API::get().ok_or(Error::NoAPI)?;

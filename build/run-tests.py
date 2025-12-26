@@ -5,13 +5,9 @@ import subprocess
 import sys
 
 if __name__ == "__main__":
-    VAPOURSYNTH_FUNCTIONS = ["vapoursynth-functions"]
-    VSSCRIPT_FUNCTIONS = ["vsscript-functions"]
     F16_PIXEL_TYPE = ["f16-pixel-type"]
 
     features = [
-        VAPOURSYNTH_FUNCTIONS,
-        VSSCRIPT_FUNCTIONS,
         F16_PIXEL_TYPE,
     ]
 
