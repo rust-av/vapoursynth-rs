@@ -52,15 +52,22 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
       - name: Run tests
         run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cd vapoursynth
           python3 ../build/run-tests.py
       - name: Run sample-plugin tests
         run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cd sample-plugin
           cargo build --verbose
           cargo run --verbose --bin test
       - name: Run doc
-        run: cargo doc --all-features --verbose
+        run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          export VAPOURSYNTH_LIB_DIR=/usr/local/lib
+          cargo doc --all-features --verbose
       - name: Copy index into the target directory
         if: matrix.toolchain == 'stable-x86_64-unknown-linux-gnu'
         run: |
