@@ -1,6 +1,6 @@
 //! Most general VapourSynth API functions.
 
-use std::ffi::{CStr, CString, NulError};
+use std::ffi::{CString, NulError};
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr::{self, NonNull};
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -139,58 +139,6 @@ impl API {
             );
         }
         Ok(())
-    }
-
-    /// Installs a custom handler for the various error messages VapourSynth emits.
-    ///
-    /// **Note:** This function is deprecated in VapourSynth v4. The message handler
-    /// registration system has been removed. This function is now a no-op that returns
-    /// a dummy ID for backward compatibility.
-    ///
-    /// [`remove_message_handler`]: #method.remove_message_handler
-    #[deprecated(
-        since = "4.0.0",
-        note = "Message handler registration was removed in VapourSynth v4"
-    )]
-    #[inline]
-    pub fn add_message_handler<F>(self, _callback: F) -> MessageHandlerId
-    where
-        F: FnMut(MessageType, &CStr) + Send + 'static,
-    {
-        MessageHandlerId(())
-    }
-
-    /// Installs a custom handler for the various error messages VapourSynth emits.
-    ///
-    /// **Note:** This function is deprecated in VapourSynth v4. The message handler
-    /// registration system has been removed. This function is now a no-op that returns
-    /// a dummy ID for backward compatibility.
-    ///
-    /// [`remove_message_handler`]: #method.remove_message_handler
-    #[deprecated(
-        since = "4.0.0",
-        note = "Message handler registration was removed in VapourSynth v4"
-    )]
-    #[inline]
-    pub fn add_message_handler_trivial(
-        self,
-        _callback: fn(MessageType, &CStr),
-    ) -> MessageHandlerId {
-        MessageHandlerId(())
-    }
-
-    /// Clears a custom message handler.
-    ///
-    /// **Note:** This function is deprecated in VapourSynth v4. The message handler
-    /// registration system has been removed. This function is now a no-op for
-    /// backward compatibility.
-    #[deprecated(
-        since = "4.0.0",
-        note = "Message handler registration was removed in VapourSynth v4"
-    )]
-    #[inline]
-    pub fn remove_message_handler(self, _handler_id: MessageHandlerId) {
-        // No-op in VapourSynth v4
     }
 
     /// Frees `node`.

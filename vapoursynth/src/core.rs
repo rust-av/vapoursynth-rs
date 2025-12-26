@@ -8,7 +8,6 @@ use vapoursynth_sys as ffi;
 
 use crate::api::API;
 use crate::format::{ColorFamily, Format, FormatID, SampleType};
-use crate::map::OwnedMap;
 use crate::plugin::Plugin;
 
 /// Contains information about a VapourSynth core.
@@ -150,24 +149,6 @@ impl<'core> CoreRef<'core> {
         } else {
             Ok(Some(unsafe { Plugin::from_ptr(ptr) }))
         }
-    }
-
-    /// Returns a map containing a list of all loaded plugins.
-    ///
-    /// **Deprecated in VapourSynth v4:** This function has been removed in v4 and will always
-    /// return an empty map. In v4, you must query plugins individually using `get_plugin_by_id()`
-    /// or `get_plugin_by_namespace()`.
-    ///
-    /// Keys: meaningless unique strings;
-    ///
-    /// Values: namespace, identifier, and full name, separated by semicolons.
-    #[deprecated(
-        since = "4.0.0",
-        note = "This function was removed in VapourSynth v4 and always returns an empty map. Use get_plugin_by_id() or get_plugin_by_namespace() instead."
-    )]
-    #[inline]
-    pub fn plugins(&self) -> OwnedMap<'core> {
-        unsafe { OwnedMap::new(API::get_cached()) }
     }
 
     /// Sets the maximum size of the framebuffer cache. Returns the new maximum size.

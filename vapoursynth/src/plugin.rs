@@ -33,24 +33,6 @@ impl<'core> Plugin<'core> {
         }
     }
 
-    /// Returns a map containing a list of the filters exported by a plugin.
-    ///
-    /// **Deprecated in VapourSynth v4:** This function has been removed in v4 and will always
-    /// return an empty map. In v4, you must query functions individually using
-    /// `get_plugin_function_by_name()`.
-    ///
-    /// Keys: the filter names;
-    ///
-    /// Values: the filter name followed by its argument string, separated by a semicolon.
-    #[deprecated(
-        since = "4.0.0",
-        note = "This function was removed in VapourSynth v4 and always returns an empty map. Use get_plugin_function_by_name() instead."
-    )]
-    #[inline]
-    pub fn functions(&self) -> OwnedMap<'core> {
-        unsafe { OwnedMap::new(API::get_cached()) }
-    }
-
     /// Returns the absolute path to the plugin, including the plugin's file name. This is the real
     /// location of the plugin, i.e. there are no symbolic links in the path.
     ///
