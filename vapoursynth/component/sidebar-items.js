@@ -1,1 +1,1 @@
-initSidebarItems({"trait":[["Component","A trait for possible pixel components."]]});
+window.SIDEBAR_ITEMS = {"trait":["Component"]};

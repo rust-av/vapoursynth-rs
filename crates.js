@@ -1,1 +1,2 @@
-window.ALL_CRATES = ["anyhow","bitflags","cfg_if","getrandom","half","lazy_static","libc","ppv_lite86","proc_macro2","quote","rand","rand_chacha","rand_core","sample_plugin","syn","test","thiserror","thiserror_impl","unicode_ident","vapoursynth","vapoursynth_sys"];
+window.ALL_CRATES = ["anyhow","cfg_if","getrandom","half","libc","ppv_lite86","proc_macro2","quote","rand","rand_chacha","rand_core","sample_plugin","syn","test","thiserror","thiserror_impl","unicode_ident","vapoursynth","vapoursynth_sys","zerocopy","zerocopy_derive"];
+//{"start":21,"fragment_lengths":[8,9,12,7,7,13,14,8,7,14,12,16,6,7,12,17,16,14,18,11,18]}

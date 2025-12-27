@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["MessageType","VapourSynth log message types."]],"struct":[["API","A wrapper for the VapourSynth API."],["MessageHandlerId","ID of a unique, registered VapourSynth message handler."]]});
+window.SIDEBAR_ITEMS = {"enum":["MessageType"],"struct":["API","MessageHandlerId"]};

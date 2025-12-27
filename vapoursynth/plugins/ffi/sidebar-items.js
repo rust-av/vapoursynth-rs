@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["call_config_func","Registers the plugin."],["call_register_func","Registers the filter `F`."]]});
+window.SIDEBAR_ITEMS = {"fn":["call_config_func","call_register_func"]};

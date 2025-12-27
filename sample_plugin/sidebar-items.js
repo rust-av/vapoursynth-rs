@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["VapourSynthPluginInit",""]]});
+window.SIDEBAR_ITEMS = {"fn":["VapourSynthPluginInit2"]};

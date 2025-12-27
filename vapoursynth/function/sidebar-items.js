@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Function","Holds a reference to a function that may be called."]]});
+window.SIDEBAR_ITEMS = {"struct":["Function"]};
