@@ -79,7 +79,7 @@ impl<'core> Plugin<'core> {
         // TODO: this is almost the same code as plugins::ffi::call_register_function().
         let name_cstring = CString::new(filter_function.name())?;
         let args_cstring = CString::new(filter_function.args())?;
-        let return_type_cstring = CString::new("vnode")?;
+        let return_type_cstring = CString::new("clip:vnode;")?;
 
         let data = Box::new(plugins::ffi::FilterFunctionData::<F> {
             filter_function,

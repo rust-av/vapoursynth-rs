@@ -250,7 +250,7 @@ pub unsafe fn call_register_func<F: FilterFunction>(
     let args_cstring = CString::new(filter_function.args())
         .expect("Couldn't convert the filter args to a CString");
     let return_type_cstring =
-        CString::new("vnode").expect("Couldn't convert return type to a CString");
+        CString::new("clip:vnode;").expect("Couldn't convert return type to a CString");
 
     let data = Box::new(FilterFunctionData {
         filter_function,
@@ -304,7 +304,9 @@ macro_rules! export_vapoursynth_plugin {
             let closure = move || {
                 call_config_func(vspapi, plugin, $metadata);
 
-                $(call_register_func(vspapi, plugin, $filter);)*
+                $(
+                    call_register_func(vspapi, plugin, $filter);
+                )*
             };
 
             if panic::catch_unwind(closure).is_err() {
