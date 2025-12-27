@@ -1,30 +1,23 @@
 # Get the arch and dir
 param([String]$arch="x86_64")
 
-$NAME = "VapourSynth"
-$PY_DIR = "py-dir"
-$VS_DIR = "vs-dir"
+$TARGET_DIR = "C:\Program Files\VapourSynth"
 
+# Determine Python version argument based on architecture
 If ($arch -eq "i686") {
-        $SUFFIX = 32
-        $PYTHON_PKG = "python-3.13.11-embed-win32.zip"
+        Write-Error "32-bit builds are not supported for VapourSynth R73"
+        Exit 1
 } Else {
-        $SUFFIX = 64
-        $PYTHON_PKG = "python-3.13.11-embed-amd64.zip"
+        # R73 requires Python 3.12+, using 3.13 as it's well-supported
+        $PYTHON_ARG = "-Python313"
 }
 
-# Download Python embeddable and VapourSynth portable
-$VS_PATH = "https://github.com/vapoursynth/vapoursynth/releases/download/R73"
-curl -LO "https://www.python.org/ftp/python/3.13.11/$PYTHON_PKG"
-curl -LO "$VS_PATH/VapourSynth$SUFFIX-Portable-R73.zip"
+# Download and run the official VapourSynth portable installation script
+# This script automatically downloads Python embeddable and VapourSynth, and properly installs the wheel package
+$VS_INSTALLER_URL = "https://github.com/vapoursynth/vapoursynth/releases/download/R73/Install-Portable-VapourSynth-R73.ps1"
 
-# Unzip Python embeddable and VapourSynth portable
-7z x "$PYTHON_PKG" -o"$PY_DIR"
-7z x "VapourSynth$SUFFIX-Portable-R73.zip" -o"$VS_DIR"
+Write-Host "Downloading VapourSynth R73 portable installer..."
+$installerScript = Invoke-RestMethod $VS_INSTALLER_URL
 
-# Move all VapourSynth files inside the Python ones
-Move-Item -Force -Path "$VS_DIR\*" -Destination "$PY_DIR"
-
-# Move the VapourSynth directory into a system directory
-Move-Item -Path "$PY_DIR" -Destination "C:\Program Files"
-Rename-Item -Path "C:\Program Files\$PY_DIR" -NewName "$NAME"
+Write-Host "Running VapourSynth portable installer..."
+Invoke-Expression "& {$installerScript} -TargetFolder '$TARGET_DIR' $PYTHON_ARG -Unattended"
