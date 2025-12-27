@@ -1,64 +1,86 @@
 //! VapourSynth script-related things.
 
-#[cfg(not(feature = "gte-vsscript-api-32"))]
-use std::sync::Mutex;
+use std::ptr::{self, NonNull};
 use std::sync::Once;
+use std::sync::atomic::{AtomicPtr, Ordering};
 use vapoursynth_sys as ffi;
 
-#[cfg(not(feature = "gte-vsscript-api-32"))]
-lazy_static! {
-    static ref FFI_CALL_MUTEX: Mutex<()> = Mutex::new(());
+/// A wrapper for the VSScript API.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct VSScriptAPI {
+    handle: NonNull<ffi::VSSCRIPTAPI>,
 }
 
-// Some `vsscript_*` function calls have threading issues. Protect them with a mutex.
-// https://github.com/vapoursynth/vapoursynth/issues/367
-macro_rules! call_vsscript {
-    ($call:expr) => {{
-        // Fixed in VSScript API 3.2.
-        // TODO: also not needed when we're running API 3.2 even without a feature.
-        #[cfg(not(feature = "gte-vsscript-api-32"))]
-        let _lock = crate::vsscript::FFI_CALL_MUTEX.lock();
+unsafe impl Send for VSScriptAPI {}
+unsafe impl Sync for VSScriptAPI {}
 
-        $call
-    }};
+/// A cached VSScript API pointer.
+static RAW_VSSCRIPT_API: AtomicPtr<ffi::VSSCRIPTAPI> = AtomicPtr::new(ptr::null_mut());
+
+impl VSScriptAPI {
+    /// Retrieves the VSScript API.
+    ///
+    /// Returns `None` on error, for example if the requested API version is not supported.
+    #[inline]
+    pub(crate) fn get() -> Option<Self> {
+        // Check if we already have the API.
+        let handle = RAW_VSSCRIPT_API.load(Ordering::Relaxed);
+
+        let handle = if handle.is_null() {
+            // Attempt retrieving it otherwise.
+            let version = ffi::VSSCRIPT_API_MAJOR << 16 | ffi::VSSCRIPT_API_MINOR;
+            let handle = unsafe { ffi::getVSScriptAPI(version as i32) } as *mut ffi::VSSCRIPTAPI;
+
+            if !handle.is_null() {
+                // Verify the VSScript API version.
+                let api_version = unsafe { ((*handle).getAPIVersion.unwrap())() };
+                let major = api_version >> 16;
+                let minor = api_version & 0xFFFF;
+
+                if major as u32 != ffi::VSSCRIPT_API_MAJOR {
+                    panic!(
+                        "Invalid VSScript major API version (expected: {}, got: {})",
+                        ffi::VSSCRIPT_API_MAJOR,
+                        major
+                    );
+                } else if (minor as u32) < ffi::VSSCRIPT_API_MINOR {
+                    panic!(
+                        "Invalid VSScript minor API version (expected: >= {}, got: {})",
+                        ffi::VSSCRIPT_API_MINOR,
+                        minor
+                    );
+                }
+
+                // If we successfully retrieved the API, cache it.
+                RAW_VSSCRIPT_API.store(handle, Ordering::Relaxed);
+            }
+            handle
+        } else {
+            handle
+        };
+
+        if handle.is_null() {
+            None
+        } else {
+            Some(Self {
+                handle: unsafe { NonNull::new_unchecked(handle) },
+            })
+        }
+    }
+
+    #[inline]
+    pub(crate) fn handle(&self) -> &ffi::VSSCRIPTAPI {
+        unsafe { self.handle.as_ref() }
+    }
 }
 
-/// Ensures `vsscript_init()` has been called at least once.
-// TODO: `vsscript_init()` is already thread-safe with `std::call_once()`, maybe this can be done
-// differently to remove the thread protection on Rust's side? An idea is to have a special type
-// which calls `vsscript_init()` in `new()` and `vsscript_finalize()` in `drop()` and have the rest
-// of the API accessible through that type, however that could become somewhat unergonomic with
-// having to store its lifetime everywhere and potentially pass it around the threads.
+/// Ensures the VSScript API has been initialized.
 #[inline]
 pub(crate) fn maybe_initialize() {
     static ONCE: Once = Once::new();
 
-    ONCE.call_once(|| unsafe {
-        ffi::vsscript_init();
-
-        // Verify the VSScript API version.
-        #[cfg(feature = "gte-vsscript-api-31")]
-        {
-            fn split_version(version: i32) -> (i32, i32) {
-                (version >> 16, version & 0xFFFF)
-            }
-
-            let vsscript_version = ffi::vsscript_getApiVersion();
-            let (major, minor) = split_version(vsscript_version);
-            let (my_major, my_minor) = split_version(ffi::VSSCRIPT_API_VERSION);
-
-            if my_major != major {
-                panic!(
-                    "Invalid VSScript major API version (expected: {}, got: {})",
-                    my_major, major
-                );
-            } else if my_minor > minor {
-                panic!(
-                    "Invalid VSScript minor API version (expected: >= {}, got: {})",
-                    my_minor, minor
-                );
-            }
-        }
+    ONCE.call_once(|| {
+        VSScriptAPI::get().expect("Failed to get VSScript API");
     });
 }
 

@@ -3,17 +3,14 @@ use std::ffi::CString;
 use std::fmt::Write;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_void;
-use std::ptr::{self, NonNull};
+use std::ptr::{self};
 use std::{mem, panic, process};
 
 use vapoursynth_sys as ffi;
 
-use thiserror::Error;
-
 use crate::api::API;
 use crate::core::CoreRef;
-use crate::frame::FrameRef;
-use crate::map::{Map, MapRef, MapRefMut};
+use crate::map::{MapRef, MapRefMut};
 use crate::plugins::{Filter, FilterFunction, FrameContext, Metadata};
 use crate::video_info::VideoInfo;
 
@@ -25,52 +22,10 @@ pub(crate) struct FilterFunctionData<F: FilterFunction> {
     pub name: CString,
 }
 
-/// Sets the video info of the output node of this filter.
-unsafe extern "system" fn init(
-    _in_: *mut ffi::VSMap,
-    out: *mut ffi::VSMap,
-    instance_data: *mut *mut c_void,
-    node: *mut ffi::VSNode,
-    core: *mut ffi::VSCore,
-    _vsapi: *const ffi::VSAPI,
-) {
-    let closure = move || {
-        let core = CoreRef::from_ptr(core);
-        // The actual lifetime isn't 'static, it's 'core, but we don't really have a way of
-        // retrieving it.
-        let filter =
-            Box::from_raw(*(instance_data as *mut *mut Box<dyn Filter<'static> + 'static>));
-
-        let vi = filter
-            .video_info(API::get_cached(), core)
-            .into_iter()
-            .map(VideoInfo::ffi_type)
-            .collect::<Vec<_>>();
-        API::get_cached().set_video_info(&vi, node);
-
-        mem::forget(filter);
-    };
-
-    if panic::catch_unwind(closure).is_err() {
-        let closure = move || {
-            // We have to leak filter here because we can't guarantee that it's in a consistent
-            // state after a panic.
-            //
-            // Just set the error message.
-            let mut out = MapRefMut::from_ptr(out);
-            out.set_error("Panic during Filter::video_info()");
-        };
-
-        if panic::catch_unwind(closure).is_err() {
-            process::abort();
-        }
-    }
-}
-
 /// Drops the filter.
-unsafe extern "system" fn free(
+unsafe extern "C" fn free(
     instance_data: *mut c_void,
-    core: *mut ffi::VSCore,
+    _core: *mut ffi::VSCore,
     _vsapi: *const ffi::VSAPI,
 ) {
     let closure = move || {
@@ -86,15 +41,15 @@ unsafe extern "system" fn free(
 }
 
 /// Calls `Filter::get_frame_initial()` and `Filter::get_frame()`.
-unsafe extern "system" fn get_frame(
+unsafe extern "C" fn get_frame(
     n: i32,
     activation_reason: i32,
-    instance_data: *mut *mut c_void,
+    instance_data: *mut c_void,
     _frame_data: *mut *mut c_void,
     frame_ctx: *mut ffi::VSFrameContext,
     core: *mut ffi::VSCore,
     _vsapi: *const ffi::VSAPI,
-) -> *const ffi::VSFrameRef {
+) -> *const ffi::VSFrame {
     let closure = move || {
         let api = API::get_cached();
         let core = CoreRef::from_ptr(core);
@@ -102,14 +57,13 @@ unsafe extern "system" fn get_frame(
 
         // The actual lifetime isn't 'static, it's 'core, but we don't really have a way of
         // retrieving it.
-        let filter =
-            Box::from_raw(*(instance_data as *mut *mut Box<dyn Filter<'static> + 'static>));
+        let filter = Box::from_raw(instance_data as *mut Box<dyn Filter<'static> + 'static>);
 
         debug_assert!(n >= 0);
         let n = n as usize;
 
         let rv = match activation_reason {
-            x if x == ffi::VSActivationReason::arInitial as _ => {
+            x if x == ffi::VSActivationReason_arInitial as _ => {
                 match filter.get_frame_initial(api, core, context, n) {
                     Ok(Some(frame)) => {
                         let ptr = frame.deref().deref() as *const _;
@@ -121,9 +75,9 @@ unsafe extern "system" fn get_frame(
                     Err(err) => {
                         let mut buf = String::with_capacity(64);
 
-                        write!(buf, "Error in Filter::get_frame_initial(): {}", err);
+                        write!(buf, "Error in Filter::get_frame_initial(): {}", err).unwrap();
 
-                        write!(buf, "{}", err);
+                        write!(buf, "{}", err).unwrap();
 
                         let buf = CString::new(buf.replace('\0', "\\0")).unwrap();
                         api.set_filter_error(buf.as_ptr(), frame_ctx);
@@ -132,7 +86,7 @@ unsafe extern "system" fn get_frame(
                     }
                 }
             }
-            x if x == ffi::VSActivationReason::arAllFramesReady as _ => {
+            x if x == ffi::VSActivationReason_arAllFramesReady as _ => {
                 match filter.get_frame(api, core, context, n) {
                     Ok(frame) => {
                         let ptr = frame.deref().deref() as *const _;
@@ -164,7 +118,7 @@ unsafe extern "system" fn get_frame(
 }
 
 /// Creates a new instance of the filter.
-pub(crate) unsafe extern "system" fn create<F: FilterFunction>(
+pub(crate) unsafe extern "C" fn create<F: FilterFunction>(
     in_: *const ffi::VSMap,
     out: *mut ffi::VSMap,
     user_data: *mut c_void,
@@ -190,9 +144,10 @@ pub(crate) unsafe extern "system" fn create<F: FilterFunction>(
                     "Error in Filter::create() of {}: {}",
                     data.name.to_str().unwrap(),
                     err
-                );
+                )
+                .unwrap();
 
-                write!(buf, "{}", err);
+                write!(buf, "{}", err).unwrap();
 
                 out.set_error(&buf.replace('\0', "\\0")).unwrap();
                 None
@@ -200,18 +155,36 @@ pub(crate) unsafe extern "system" fn create<F: FilterFunction>(
         };
 
         if let Some(filter) = filter {
-            API::get_cached().create_filter(
-                in_,
+            // In v4, we need to get the video info before creating the filter
+            let vi = filter
+                .video_info(API::get_cached(), core)
+                .into_iter()
+                .map(VideoInfo::ffi_type)
+                .collect::<Vec<_>>();
+
+            // For now, assume single output (most common case)
+            // TODO: Handle multiple outputs if needed
+            let vi_ptr = if !vi.is_empty() {
+                vi.as_ptr()
+            } else {
+                ptr::null()
+            };
+
+            API::get_cached().create_video_filter(
                 out.deref_mut().deref_mut(),
                 data.name.as_ptr(),
-                init,
-                get_frame,
+                vi_ptr,
+                Some(get_frame),
                 Some(free),
-                ffi::VSFilterMode::fmParallel,
-                ffi::VSNodeFlags(0),
+                ffi::VSFilterMode_fmParallel as i32,
+                ptr::null(), // No dependencies for now
+                0,           // numDeps
                 Box::into_raw(filter) as *mut _,
                 core.ptr(),
             );
+
+            // Keep vi alive until create_video_filter returns
+            mem::forget(vi);
         }
 
         mem::forget(data);
@@ -231,12 +204,10 @@ pub(crate) unsafe extern "system" fn create<F: FilterFunction>(
 /// The caller must ensure the pointers are valid.
 #[inline]
 pub unsafe fn call_config_func(
-    config_func: *const c_void,
-    plugin: *mut c_void,
+    vspapi: *const ffi::VSPLUGINAPI,
+    plugin: *mut ffi::VSPlugin,
     metadata: Metadata,
 ) {
-    let config_func = *(&config_func as *const _ as *const ffi::VSConfigPlugin);
-
     let identifier_cstring = CString::new(metadata.identifier)
         .expect("Couldn't convert the plugin identifier to a CString");
     let namespace_cstring = CString::new(metadata.namespace)
@@ -244,13 +215,21 @@ pub unsafe fn call_config_func(
     let name_cstring =
         CString::new(metadata.name).expect("Couldn't convert the plugin name to a CString");
 
-    config_func(
+    let api_version = (ffi::VAPOURSYNTH_API_MAJOR << 16 | ffi::VAPOURSYNTH_API_MINOR) as i32;
+    let flags = if metadata.read_only {
+        0 // Read-only means NOT modifiable
+    } else {
+        ffi::VSPluginConfigFlags_pcModifiable as i32
+    };
+
+    ((*vspapi).configPlugin.unwrap())(
         identifier_cstring.as_ptr(),
         namespace_cstring.as_ptr(),
         name_cstring.as_ptr(),
-        ffi::VAPOURSYNTH_API_VERSION,
-        if metadata.read_only { 1 } else { 0 },
-        plugin as *mut ffi::VSPlugin,
+        1, // Plugin version
+        api_version,
+        flags,
+        plugin,
     );
 }
 
@@ -262,28 +241,29 @@ pub unsafe fn call_config_func(
 /// The caller must ensure the pointers are valid.
 #[inline]
 pub unsafe fn call_register_func<F: FilterFunction>(
-    register_func: *const c_void,
-    plugin: *mut c_void,
+    vspapi: *const ffi::VSPLUGINAPI,
+    plugin: *mut ffi::VSPlugin,
     filter_function: F,
 ) {
-    let register_func = *(&register_func as *const _ as *const ffi::VSRegisterFunction);
-
     let name_cstring = CString::new(filter_function.name())
         .expect("Couldn't convert the filter name to a CString");
     let args_cstring = CString::new(filter_function.args())
         .expect("Couldn't convert the filter args to a CString");
+    let return_type_cstring =
+        CString::new("clip:vnode;").expect("Couldn't convert return type to a CString");
 
     let data = Box::new(FilterFunctionData {
         filter_function,
         name: name_cstring,
     });
 
-    register_func(
+    ((*vspapi).registerFunction.unwrap())(
         data.name.as_ptr(),
         args_cstring.as_ptr(),
-        create::<F>,
+        return_type_cstring.as_ptr(),
+        Some(create::<F>),
         Box::into_raw(data) as _,
-        plugin as *mut ffi::VSPlugin,
+        plugin,
     );
 }
 
@@ -312,22 +292,21 @@ pub unsafe fn call_register_func<F: FilterFunction>(
 #[macro_export]
 macro_rules! export_vapoursynth_plugin {
     ($metadata:expr, [$($filter:expr),*$(,)*]) => (
-        use ::std::os::raw::c_void;
-
         #[allow(non_snake_case)]
-        #[no_mangle]
-        pub unsafe extern "system" fn VapourSynthPluginInit(
-            config_func: *const c_void,
-            register_func: *const c_void,
-            plugin: *mut c_void,
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C" fn VapourSynthPluginInit2(
+            plugin: *mut $crate::ffi::VSPlugin,
+            vspapi: *const $crate::ffi::VSPLUGINAPI,
         ) {
             use ::std::{panic, process};
             use $crate::plugins::ffi::{call_config_func, call_register_func};
 
             let closure = move || {
-                call_config_func(config_func, plugin, $metadata);
+                call_config_func(vspapi, plugin, $metadata);
 
-                $(call_register_func(register_func, plugin, $filter);)*
+                $(
+                    call_register_func(vspapi, plugin, $filter);
+                )*
             };
 
             if panic::catch_unwind(closure).is_err() {

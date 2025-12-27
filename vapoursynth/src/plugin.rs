@@ -28,27 +28,15 @@ impl<'core> Plugin<'core> {
     #[inline]
     pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSPlugin) -> Self {
         Self {
-            handle: NonNull::new_unchecked(handle),
+            handle: unsafe { NonNull::new_unchecked(handle) },
             _owner: PhantomData,
         }
-    }
-
-    /// Returns a map containing a list of the filters exported by a plugin.
-    ///
-    /// Keys: the filter names;
-    ///
-    /// Values: the filter name followed by its argument string, separated by a semicolon.
-    // TODO: parse the values on the crate side and return a nice struct.
-    #[inline]
-    pub fn functions(&self) -> OwnedMap<'core> {
-        unsafe { OwnedMap::from_ptr(API::get_cached().get_functions(self.handle.as_ptr())) }
     }
 
     /// Returns the absolute path to the plugin, including the plugin's file name. This is the real
     /// location of the plugin, i.e. there are no symbolic links in the path.
     ///
     /// Path elements are always delimited with forward slashes.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub fn path(&self) -> Option<&'core CStr> {
         let ptr = unsafe { API::get_cached().get_plugin_path(self.handle.as_ptr()) };
@@ -91,6 +79,7 @@ impl<'core> Plugin<'core> {
         // TODO: this is almost the same code as plugins::ffi::call_register_function().
         let name_cstring = CString::new(filter_function.name())?;
         let args_cstring = CString::new(filter_function.args())?;
+        let return_type_cstring = CString::new("clip:vnode;")?;
 
         let data = Box::new(plugins::ffi::FilterFunctionData::<F> {
             filter_function,
@@ -101,12 +90,91 @@ impl<'core> Plugin<'core> {
             API::get_cached().register_function(
                 data.name.as_ptr(),
                 args_cstring.as_ptr(),
-                plugins::ffi::create::<F>,
+                return_type_cstring.as_ptr(),
+                Some(plugins::ffi::create::<F>),
                 Box::into_raw(data) as _,
                 self.handle.as_ptr(),
             );
         }
 
         Ok(())
+    }
+
+    /// Returns a plugin function by name.
+    ///
+    /// This function retrieves a specific filter function exported by the plugin. In VapourSynth v4,
+    /// this is the recommended way to query plugin functions, as the `functions()` method has been
+    /// removed.
+    ///
+    /// Returns `None` if no function with the given name exists.
+    #[inline]
+    pub fn get_plugin_function_by_name(
+        &self,
+        name: &str,
+    ) -> Result<Option<PluginFunction<'core>>, NulError> {
+        let name = CString::new(name)?;
+        let ptr = unsafe {
+            API::get_cached().get_plugin_function_by_name(name.as_ptr(), self.handle.as_ptr())
+        };
+        if ptr.is_null() {
+            Ok(None)
+        } else {
+            Ok(Some(unsafe { PluginFunction::from_ptr(ptr) }))
+        }
+    }
+}
+
+/// A VapourSynth plugin function.
+///
+/// This represents a specific filter function exported by a plugin. In VapourSynth v4, plugin
+/// functions must be queried individually by name using `Plugin::get_plugin_function_by_name()`.
+#[derive(Debug, Clone, Copy)]
+pub struct PluginFunction<'core> {
+    handle: NonNull<ffi::VSPluginFunction>,
+    _owner: PhantomData<&'core ()>,
+}
+
+unsafe impl<'core> Send for PluginFunction<'core> {}
+unsafe impl<'core> Sync for PluginFunction<'core> {}
+
+impl<'core> PluginFunction<'core> {
+    /// Wraps `handle` in a `PluginFunction`.
+    ///
+    /// # Safety
+    /// The caller must ensure `handle` is valid and API is cached.
+    #[inline]
+    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSPluginFunction) -> Self {
+        Self {
+            handle: unsafe { NonNull::new_unchecked(handle) },
+            _owner: PhantomData,
+        }
+    }
+
+    /// Returns the name of this plugin function.
+    #[inline]
+    pub fn name(&self) -> &'core CStr {
+        let ptr = unsafe { API::get_cached().get_plugin_function_name(self.handle.as_ptr()) };
+        unsafe { CStr::from_ptr(ptr) }
+    }
+
+    /// Returns the argument specification string for this plugin function.
+    ///
+    /// The argument string describes the parameters the function accepts using VapourSynth's
+    /// argument specification format (e.g., "clip:vnode;width:int:opt;height:int:opt;").
+    #[inline]
+    pub fn arguments(&self) -> &'core CStr {
+        let ptr = unsafe { API::get_cached().get_plugin_function_arguments(self.handle.as_ptr()) };
+        unsafe { CStr::from_ptr(ptr) }
+    }
+
+    /// Returns the return type specification string for this plugin function.
+    ///
+    /// The return type string describes what the function returns using VapourSynth's
+    /// type specification format (typically "vnode" for filters that return video nodes).
+    #[inline]
+    pub fn return_type(&self) -> &'core CStr {
+        let ptr =
+            unsafe { API::get_cached().get_plugin_function_return_type(self.handle.as_ptr()) };
+        unsafe { CStr::from_ptr(ptr) }
     }
 }

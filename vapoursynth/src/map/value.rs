@@ -9,8 +9,10 @@ pub enum ValueType {
     Int,
     Float,
     Data,
-    Node,
-    Frame,
+    VideoNode,
+    AudioNode,
+    VideoFrame,
+    AudioFrame,
     Function,
 }
 
@@ -97,12 +99,12 @@ impl<'map, 'elem: 'map> Value<'map, 'elem> for &'map [u8] {
 impl<'map, 'elem: 'map> Value<'map, 'elem> for Node<'elem> {
     #[inline]
     fn get_from_map(map: &Map<'elem>, key: &str) -> Result<Self> {
-        map.get_node(key)
+        map.get_video_node(key)
     }
 
     #[inline]
     fn get_iter_from_map(map: &'map Map<'elem>, key: &str) -> Result<ValueIter<'map, 'elem, Self>> {
-        map.get_node_iter(key)
+        map.get_video_node_iter(key)
     }
 
     #[inline]
@@ -119,12 +121,12 @@ impl<'map, 'elem: 'map> Value<'map, 'elem> for Node<'elem> {
 impl<'map, 'elem: 'map> Value<'map, 'elem> for FrameRef<'elem> {
     #[inline]
     fn get_from_map(map: &Map<'elem>, key: &str) -> Result<Self> {
-        map.get_frame(key)
+        map.get_video_frame(key)
     }
 
     #[inline]
     fn get_iter_from_map(map: &'map Map<'elem>, key: &str) -> Result<ValueIter<'map, 'elem, Self>> {
-        map.get_frame_iter(key)
+        map.get_video_frame_iter(key)
     }
 
     #[inline]

@@ -1,26 +1,36 @@
+# Changelog
+
+## v4.0.0 (2025-11-29)
+
+- Migrate to v4 VapourSynth API
+- Migrate to 2024 edition
+
 ## v0.4 (12th Jul 2022)
-* Migrated from `failure` to `thiserror` and `anyhow`.
-* Migrated to the 2021 edition.
-* Added `impl From<FormatID> for i32`.
-* Changed integer values of the `ColorFamily` enum to match those used by VapourSynth.
-* Updated dependencies.
+
+- Migrated from `failure` to `thiserror` and `anyhow`.
+- Migrated to the 2021 edition.
+- Added `impl From<FormatID> for i32`.
+- Changed integer values of the `ColorFamily` enum to match those used by VapourSynth.
+- Updated dependencies.
 
 ## v0.3 (22nd Oct 2019)
-* Added support for VapourSynth API 3.6 (R47):
-  * `API::{add,remove}_message_handler` deprecate `API::set_message_handler`.
-  * `CoreRef::info()` is implemented via the thread-safe `getCoreInfo2`
+
+- Added support for VapourSynth API 3.6 (R47):
+  - `API::{add,remove}_message_handler` deprecate `API::set_message_handler`.
+  - `CoreRef::info()` is implemented via the thread-safe `getCoreInfo2`
     automatically when using the `vapoursynth-api-36` feature.
-  * Added `CoreRef::set_{max_cache_size,thread_count}`, which can now be
+  - Added `CoreRef::set_{max_cache_size,thread_count}`, which can now be
     implemented safely.
-* Added `API::create_core`.
-* Added more default VapourSynth .lib folders on Windows: the automatic
+- Added `API::create_core`.
+- Added more default VapourSynth .lib folders on Windows: the automatic
   detection should now work with R46 and above in various configurations.
-* Changed some Clippy and Rustfmt attributes into their newer versions, fixed
+- Changed some Clippy and Rustfmt attributes into their newer versions, fixed
   deprecation warnings (bumps minimum Rust).
-* Fixed the lifetimes on the return values of
+- Fixed the lifetimes on the return values of
   `CoreRef::{get_plugin_by_id,get_plugin_by_namespace,plugins}`.
 
 ## v0.2 (16th Jun 2018)
+
 - Added plugin support! That includes:
   - `plugins::{Metadata,Filter,FilterFunction}` types and traits for making plugins;
   - `export_vapoursynth_plugin!` macro for exporting a VapourSynth plugin;
@@ -35,12 +45,15 @@
 - Added some convenience `From` impls.
 
 ### v0.1.2 (2nd Apr 2018)
+
 - Fixed `Frame::data_row()` returning slices of incorrect rows (using the `plane` value instead of the `row` value).
 
 ### v0.1.1 (24th Mar 2018)
+
 - Added support for targetting 32-bit Windows
 - Added automatic detection of common Windows VapourSynth library dirs
 - Fixed `Frame::data()` and `Frame::data_row()` returning slices of incorrect sizes (too short) for pixel formats with more than 1 byte per pixel
 
 ## v0.1.0
+
 - Initial release

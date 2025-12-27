@@ -1,32 +1,28 @@
 [package]
 name = "vapoursynth"
-edition = "2021"
-version = "0.4.0"                                               # remember to update html_root_url
-authors = ["Ivan Molodetskikh <yalterz@gmail.com>"]
+edition = "2024"
+version = "0.5.0"
 description = "Safe Rust wrapper for VapourSynth and VSScript."
 license = "MIT/Apache-2.0"
 
-readme = "README.md"
+readme = "../README.md"
 documentation = "https://docs.rs/vapoursynth"
-repository = "https://github.com/YaLTeR/vapoursynth-rs"
+repository = "https://github.com/rust-av/vapoursynth-rs"
 keywords = ["vapoursynth", "vsscript", "video", "bindings"]
 categories = ["api-bindings", "external-ffi-bindings", "multimedia::video"]
 
 [badges]
-travis-ci = { repository = "YaLTeR/vapoursynth-rs" }
-appveyor = { repository = "YaLTeR/vapoursynth-rs" }
+travis-ci = { repository = "rust-av/vapoursynth-rs" }
+appveyor = { repository = "rust-av/vapoursynth-rs" }
 
 [dependencies]
-bitflags = "1.3.2"
 half = { version = "2.0.0", optional = true }
 anyhow = "1.0.58"
-thiserror = "1.0.31"
-lazy_static = "1.4.0"
-vapoursynth-sys = { version = "0.4", path = "../vapoursynth-sys" }
+thiserror = "2.0.17"
+vapoursynth-sys = { version = "0.5", path = "../vapoursynth-sys" }
 
 [dev-dependencies]
 clap = "3.2.10"
-lazy_static = "1.4.0"
 
 [dev-dependencies.num-rational]
 version = "0.4.1"
@@ -34,80 +30,9 @@ default-features = false
 features = ["std"]
 
 [features]
+default = []
 # Enable the half::f16 type to be used for frame pixel data.
 f16-pixel-type = ["half"]
 
-# Features for enabling higher API versions.
-vapoursynth-api-31 = [
-    "vapoursynth-sys/vapoursynth-api-31",
-    "gte-vapoursynth-api-31",
-]
-vapoursynth-api-32 = [
-    "vapoursynth-sys/vapoursynth-api-32",
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-]
-vapoursynth-api-33 = [
-    "vapoursynth-sys/vapoursynth-api-33",
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-]
-vapoursynth-api-34 = [
-    "vapoursynth-sys/vapoursynth-api-34",
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-    "gte-vapoursynth-api-34",
-]
-vapoursynth-api-35 = [
-    "vapoursynth-sys/vapoursynth-api-35",
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-    "gte-vapoursynth-api-34",
-    "gte-vapoursynth-api-35",
-]
-vapoursynth-api-36 = [
-    "vapoursynth-sys/vapoursynth-api-36",
-    "gte-vapoursynth-api-31",
-    "gte-vapoursynth-api-32",
-    "gte-vapoursynth-api-33",
-    "gte-vapoursynth-api-34",
-    "gte-vapoursynth-api-35",
-    "gte-vapoursynth-api-36",
-]
-
-vsscript-api-31 = ["vapoursynth-sys/vsscript-api-31", "gte-vsscript-api-31"]
-vsscript-api-32 = [
-    "vapoursynth-sys/vsscript-api-32",
-    "gte-vsscript-api-31",
-    "gte-vsscript-api-32",
-]
-
-# Features for linking to certain functions.
-vapoursynth-functions = ["vapoursynth-sys/vapoursynth-functions"]
-vsscript-functions = ["vapoursynth-sys/vsscript-functions"]
-
-# Utility features, not for outside use.
-gte-vapoursynth-api-31 = []
-gte-vapoursynth-api-32 = []
-gte-vapoursynth-api-33 = []
-gte-vapoursynth-api-34 = []
-gte-vapoursynth-api-35 = []
-gte-vapoursynth-api-36 = []
-
-gte-vsscript-api-31 = []
-gte-vsscript-api-32 = []
-
-# For development.
-#default = ["vapoursynth-api-36", "vsscript-api-32", "vapoursynth-functions", "vsscript-functions"]
-
 [package.metadata.docs.rs]
-features = [
-    "vapoursynth-api-36",
-    "vsscript-api-32",
-    "vapoursynth-functions",
-    "vsscript-functions",
-    "f16-pixel-type",
-]
+features = ["f16-pixel-type"]

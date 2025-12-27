@@ -8,15 +8,10 @@ authors = ["Ivan Molodetskikh <yalterz@gmail.com>"]
 crate-type = ["cdylib"]
 
 [dependencies]
-cfg-if = { version = "1.0.0", optional = true }
+cfg-if = "1.0.0"
 anyhow = "1.0.58"
 rand = "0.8.5"
 vapoursynth = { path = "../vapoursynth" }
 
 [[bin]]
 name = "test"
-required-features = [
-    "cfg-if",
-    "vapoursynth/vapoursynth-functions",
-    "vapoursynth/vsscript-functions",
-]

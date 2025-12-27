@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::ptr::{self, NonNull};
-use std::{mem, slice};
+use std::slice;
 use vapoursynth_sys as ffi;
 
 use thiserror::Error;
@@ -25,7 +25,7 @@ pub struct NonZeroPadding(usize);
 #[derive(Debug)]
 pub struct Frame<'core> {
     // The actual mutability of this depends on whether it's accessed via `&Frame` or `&mut Frame`.
-    handle: NonNull<ffi::VSFrameRef>,
+    handle: NonNull<ffi::VSFrame>,
     // The cached frame format for fast access.
     format: Format<'core>,
     _owner: PhantomData<&'core ()>,
@@ -50,7 +50,7 @@ unsafe impl<'core> Sync for Frame<'core> {}
 
 #[doc(hidden)]
 impl<'core> Deref for Frame<'core> {
-    type Target = ffi::VSFrameRef;
+    type Target = ffi::VSFrame;
 
     // Technically this should return `&'core`.
     #[inline]
@@ -120,7 +120,7 @@ impl<'core> FrameRef<'core> {
     /// # Safety
     /// The caller must ensure `handle` and the lifetime is valid and API is cached.
     #[inline]
-    pub(crate) unsafe fn from_ptr(handle: *const ffi::VSFrameRef) -> Self {
+    pub(crate) unsafe fn from_ptr(handle: *const ffi::VSFrame) -> Self {
         Self {
             frame: Frame::from_ptr(handle),
         }
@@ -133,7 +133,8 @@ impl<'core> FrameRefMut<'core> {
     /// # Safety
     /// The caller must ensure `handle` and the lifetime is valid and API is cached.
     #[inline]
-    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSFrameRef) -> Self {
+    #[expect(dead_code)]
+    pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSFrame) -> Self {
         Self {
             frame: Frame::from_ptr(handle),
         }
@@ -200,9 +201,9 @@ impl<'core> Frame<'core> {
     /// `Frame` gets put into `FrameRef` or `FrameRefMut` according to the input pointer
     /// mutability.
     #[inline]
-    pub(crate) unsafe fn from_ptr(handle: *const ffi::VSFrameRef) -> Self {
+    pub(crate) unsafe fn from_ptr(handle: *const ffi::VSFrame) -> Self {
         Self {
-            handle: NonNull::new_unchecked(handle as *mut ffi::VSFrameRef),
+            handle: NonNull::new_unchecked(handle as *mut ffi::VSFrame),
             format: unsafe {
                 let ptr = API::get_cached().get_frame_format(&*handle);
                 Format::from_ptr(ptr)
@@ -490,13 +491,13 @@ impl<'core> Frame<'core> {
 
     /// Returns a map of frame's properties.
     #[inline]
-    pub fn props(&self) -> MapRef {
+    pub fn props(&self) -> MapRef<'_, '_> {
         unsafe { MapRef::from_ptr(API::get_cached().get_frame_props_ro(self)) }
     }
 
     /// Returns a mutable map of frame's properties.
     #[inline]
-    pub fn props_mut(&mut self) -> MapRefMut {
+    pub fn props_mut(&mut self) -> MapRefMut<'_, '_> {
         unsafe { MapRefMut::from_ptr(API::get_cached().get_frame_props_rw(self)) }
     }
 }

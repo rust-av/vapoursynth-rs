@@ -10,13 +10,13 @@
 //! well as create VapourSynth filters.
 //!
 //! For an example usage see
-//! [examples/vspipe.rs](https://github.com/YaLTeR/vapoursynth-rs/blob/master/vapoursynth/examples/vspipe.rs),
+//! [examples/vspipe.rs](https://github.com/rust-av/vapoursynth-rs/blob/master/vapoursynth/examples/vspipe.rs),
 //! a complete reimplementation of VapourSynth's
 //! [vspipe](https://github.com/vapoursynth/vapoursynth/blob/master/src/vspipe/vspipe.cpp) in safe
 //! Rust utilizing this crate.
 //!
 //! For a VapourSynth plugin example see
-//! [sample-plugin](https://github.com/YaLTeR/vapoursynth-rs/blob/master/sample-plugin) which
+//! [sample-plugin](https://github.com/rust-av/vapoursynth-rs/blob/master/sample-plugin) which
 //! implements some simple filters.
 //!
 //! ## Short example
@@ -24,9 +24,7 @@
 //! ```no_run
 //! # extern crate vapoursynth;
 //! # use anyhow::Error;
-//! # #[cfg(all(feature = "vsscript-functions",
-//! #           feature = "gte-vsscript-api-31",
-//! #           any(feature = "vapoursynth-functions", feature = "gte-vsscript-api-32")))]
+//! #
 //! # fn foo() -> Result<(), Error> {
 //! use vapoursynth::prelude::*;
 //!
@@ -125,27 +123,12 @@
 //! # }
 //! ```
 //!
-//! Check [sample-plugin](https://github.com/YaLTeR/vapoursynth-rs/blob/master/sample-plugin) for
+//! Check [sample-plugin](https://github.com/rust-av/vapoursynth-rs/blob/master/sample-plugin) for
 //! an example plugin which exports some simple filters.
 //!
 //! ## Supported Versions
 //!
-//! All VapourSynth and VSScript API versions starting with 3.0 are supported. By default the
-//! crates use the 3.0 feature set. To enable higher API version support, enable one of the
-//! following Cargo features:
-//!
-//! * `vapoursynth-api-31` for VapourSynth API 3.1
-//! * `vapoursynth-api-32` for VapourSynth API 3.2
-//! * `vapoursynth-api-33` for VapourSynth API 3.3
-//! * `vapoursynth-api-34` for VapourSynth API 3.4
-//! * `vapoursynth-api-35` for VapourSynth API 3.5
-//! * `vsscript-api-31` for VSScript API 3.1
-//! * `vsscript-api-32` for VSScript API 3.2
-//!
-//! To enable linking to VapourSynth or VSScript functions, enable the following Cargo features:
-//!
-//! * `vapoursynth-functions` for VapourSynth functions (`getVapourSynthAPI()`)
-//! * `vsscript-functions` for VSScript functions (`vsscript_*()`)
+//! All VapourSynth and VSScript API versions starting with 4.0 are supported.
 //!
 //! ## Building
 //!
@@ -159,22 +142,14 @@
 //! `<path to the VapourSynth installation>\sdk\lib64` or `<...>\lib32`, depending on the target
 //! bitness.
 
-#![doc(html_root_url = "https://docs.rs/vapoursynth/0.4.0")]
-// Preventing all those warnings with #[cfg] directives would be really diffucult.
-#![allow(unused, dead_code)]
-#![allow(clippy::trivially_copy_pass_by_ref)]
+#![allow(unsafe_op_in_unsafe_fn)]
 
-#[macro_use]
-extern crate bitflags;
-#[cfg(feature = "f16-pixel-type")]
-extern crate half;
-#[cfg(any(not(feature = "gte-vsscript-api-32"), test))]
-#[macro_use]
-extern crate lazy_static;
-extern crate vapoursynth_sys;
+#[cfg(test)]
+pub extern crate vapoursynth_sys;
 
-#[cfg(feature = "vsscript-functions")]
-pub mod vsscript;
+// Re-export vapoursynth_sys as ffi for use in macros
+#[doc(hidden)]
+pub use vapoursynth_sys as ffi;
 
 pub mod api;
 pub mod component;
@@ -187,12 +162,13 @@ pub mod node;
 pub mod plugin;
 pub mod plugins;
 pub mod video_info;
+pub mod vsscript;
 
 pub mod prelude {
     //! The VapourSynth prelude.
     //!
     //! Contains the types you most likely want to import anyway.
-    pub use super::api::{MessageType, API};
+    pub use super::api::{API, MessageType};
     pub use super::component::Component;
     pub use super::format::{ColorFamily, PresetFormat, SampleType};
     pub use super::frame::{Frame, FrameRef, FrameRefMut};
@@ -200,8 +176,6 @@ pub mod prelude {
     pub use super::node::{GetFrameError, Node};
     pub use super::plugin::Plugin;
     pub use super::video_info::Property;
-
-    #[cfg(feature = "vsscript-functions")]
     pub use super::vsscript::{self, Environment, EvalFlags};
 }
 

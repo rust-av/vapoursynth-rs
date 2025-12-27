@@ -188,14 +188,14 @@ impl<'map, 'elem: 'map> FilterArgument<'map, 'elem> for &'map [u8] {
 impl<'map, 'elem: 'map> FilterArgument<'map, 'elem> for Node<'elem> {
     #[inline]
     fn type_name() -> &'static str {
-        "clip"
+        "vnode"
     }
 }
 
 impl<'map, 'elem: 'map> FilterArgument<'map, 'elem> for FrameRef<'elem> {
     #[inline]
     fn type_name() -> &'static str {
-        "frame"
+        "vframe"
     }
 }
 
@@ -309,7 +309,7 @@ mod private {
 
     impl Sealed for i64 {}
     impl Sealed for f64 {}
-    impl<'map> Sealed for &'map [u8] {}
+    impl Sealed for &[u8] {}
     impl<'elem> Sealed for Node<'elem> {}
     impl<'elem> Sealed for FrameRef<'elem> {}
     impl<'elem> Sealed for Function<'elem> {}
@@ -409,11 +409,6 @@ macro_rules! make_filter_function {
 
                     if <$arg_type as $crate::plugins::FilterParameter>::is_optional() {
                         args += ":opt";
-                    }
-
-                    // TODO: allow specifying this.
-                    if <$arg_type as $crate::plugins::FilterParameter>::is_array() {
-                        args += ":empty";
                     }
 
                     args += ";";

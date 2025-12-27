@@ -8,7 +8,6 @@ use vapoursynth_sys as ffi;
 
 use crate::api::API;
 use crate::format::{ColorFamily, Format, FormatID, SampleType};
-use crate::map::OwnedMap;
 use crate::plugin::Plugin;
 
 /// Contains information about a VapourSynth core.
@@ -65,14 +64,6 @@ impl<'core> CoreRef<'core> {
 
     /// Returns information about the VapourSynth core.
     pub fn info(self) -> Info {
-        #[cfg(not(feature = "gte-vapoursynth-api-36"))]
-        let raw_info = unsafe {
-            API::get_cached()
-                .get_core_info(self.handle.as_ptr())
-                .as_ref()
-                .unwrap()
-        };
-        #[cfg(feature = "gte-vapoursynth-api-36")]
         let raw_info = unsafe { &API::get_cached().get_core_info(self.handle.as_ptr()) };
 
         let version_string = unsafe { CStr::from_ptr(raw_info.versionString).to_str().unwrap() };
@@ -160,19 +151,7 @@ impl<'core> CoreRef<'core> {
         }
     }
 
-    /// Returns a map containing a list of all loaded plugins.
-    ///
-    /// Keys: meaningless unique strings;
-    ///
-    /// Values: namespace, identifier, and full name, separated by semicolons.
-    // TODO: parse the values on the crate side and return a nice struct.
-    #[inline]
-    pub fn plugins(&self) -> OwnedMap<'core> {
-        unsafe { OwnedMap::from_ptr(API::get_cached().get_plugins(self.handle.as_ptr())) }
-    }
-
     /// Sets the maximum size of the framebuffer cache. Returns the new maximum size.
-    #[cfg(feature = "gte-vapoursynth-api-36")]
     #[inline]
     pub fn set_max_cache_size(&self, bytes: i64) -> i64 {
         unsafe { API::get_cached().set_max_cache_size(bytes, self.handle.as_ptr()) }
@@ -184,7 +163,6 @@ impl<'core> CoreRef<'core> {
     /// detected and used.
     ///
     /// Returns the new thread count.
-    #[cfg(feature = "gte-vapoursynth-api-36")]
     #[inline]
     pub fn set_thread_count(&self, threads: i32) -> i32 {
         unsafe { API::get_cached().set_thread_count(threads, self.handle.as_ptr()) }

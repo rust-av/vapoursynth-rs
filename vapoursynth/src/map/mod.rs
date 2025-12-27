@@ -4,9 +4,8 @@ use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::os::raw::c_char;
-use std::ptr::{self, NonNull};
-use std::{mem, result, slice};
+use std::ptr::NonNull;
+use std::{result, slice};
 use vapoursynth_sys as ffi;
 
 use crate::api::API;
@@ -148,7 +147,7 @@ impl<'elem> OwnedMap<'elem> {
     #[inline]
     pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSMap) -> Self {
         Self {
-            map: Map::from_ptr(handle),
+            map: unsafe { Map::from_ptr(handle) },
         }
     }
 }
@@ -162,7 +161,7 @@ impl<'owner, 'elem> MapRef<'owner, 'elem> {
     #[inline]
     pub(crate) unsafe fn from_ptr(handle: *const ffi::VSMap) -> Self {
         Self {
-            map: Map::from_ptr(handle),
+            map: unsafe { Map::from_ptr(handle) },
             _owner: PhantomData,
         }
     }
@@ -177,7 +176,7 @@ impl<'owner, 'elem> MapRefMut<'owner, 'elem> {
     #[inline]
     pub(crate) unsafe fn from_ptr(handle: *mut ffi::VSMap) -> Self {
         Self {
-            map: Map::from_ptr(handle),
+            map: unsafe { Map::from_ptr(handle) },
             _owner: PhantomData,
         }
     }
@@ -190,10 +189,10 @@ fn handle_get_prop_error(error: i32) -> Result<()> {
         Ok(())
     } else {
         Err(match error {
-            x if x == ffi::VSGetPropErrors::peUnset as i32 => Error::KeyNotFound,
-            x if x == ffi::VSGetPropErrors::peType as i32 => Error::WrongValueType,
-            x if x == ffi::VSGetPropErrors::peIndex as i32 => Error::IndexOutOfBounds,
-            _ => unreachable!(),
+            x if x == ffi::VSMapPropertyError_peUnset as i32 => Error::KeyNotFound,
+            x if x == ffi::VSMapPropertyError_peType as i32 => Error::WrongValueType,
+            x if x == ffi::VSMapPropertyError_peIndex as i32 => Error::IndexOutOfBounds,
+            _ => Error::UnknownError,
         })
     }
 }
@@ -218,7 +217,7 @@ impl<'elem> Map<'elem> {
     #[inline]
     pub(crate) unsafe fn from_ptr(handle: *const ffi::VSMap) -> Self {
         Self {
-            handle: NonNull::new_unchecked(handle as *mut ffi::VSMap),
+            handle: unsafe { NonNull::new_unchecked(handle as *mut ffi::VSMap) },
             _elem: PhantomData,
         }
     }
@@ -263,7 +262,7 @@ impl<'elem> Map<'elem> {
 
     /// Returns the error message contained in the map, if any.
     #[inline]
-    pub fn error(&self) -> Option<Cow<str>> {
+    pub fn error(&self) -> Option<Cow<'_, str>> {
         let error_message = unsafe { API::get_cached().get_error(self) };
         if error_message.is_null() {
             return None;
@@ -314,7 +313,7 @@ impl<'elem> Map<'elem> {
 
     /// Returns an iterator over all keys in a map.
     #[inline]
-    pub fn keys(&self) -> Keys {
+    pub fn keys(&self) -> Keys<'_, '_> {
         Keys::new(self)
     }
 
@@ -324,7 +323,7 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn value_count_raw_unchecked(&self, key: &CStr) -> Result<usize> {
-        let rv = API::get_cached().prop_num_elements(self, key.as_ptr());
+        let rv = unsafe { API::get_cached().prop_num_elements(self, key.as_ptr()) };
         if rv == -1 {
             Err(Error::KeyNotFound)
         } else {
@@ -346,14 +345,16 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn value_type_raw_unchecked(&self, key: &CStr) -> Result<ValueType> {
-        match API::get_cached().prop_get_type(self, key.as_ptr()) {
-            x if x == ffi::VSPropTypes::ptUnset as c_char => Err(Error::KeyNotFound),
-            x if x == ffi::VSPropTypes::ptInt as c_char => Ok(ValueType::Int),
-            x if x == ffi::VSPropTypes::ptFloat as c_char => Ok(ValueType::Float),
-            x if x == ffi::VSPropTypes::ptData as c_char => Ok(ValueType::Data),
-            x if x == ffi::VSPropTypes::ptNode as c_char => Ok(ValueType::Node),
-            x if x == ffi::VSPropTypes::ptFrame as c_char => Ok(ValueType::Frame),
-            x if x == ffi::VSPropTypes::ptFunction as c_char => Ok(ValueType::Function),
+        match unsafe { API::get_cached().prop_get_type(self, key.as_ptr()) } {
+            x if x == ffi::VSPropertyType_ptUnset as i32 => Err(Error::KeyNotFound),
+            x if x == ffi::VSPropertyType_ptInt as i32 => Ok(ValueType::Int),
+            x if x == ffi::VSPropertyType_ptFloat as i32 => Ok(ValueType::Float),
+            x if x == ffi::VSPropertyType_ptData as i32 => Ok(ValueType::Data),
+            x if x == ffi::VSPropertyType_ptVideoNode as i32 => Ok(ValueType::VideoNode),
+            x if x == ffi::VSPropertyType_ptAudioNode as i32 => Ok(ValueType::AudioNode),
+            x if x == ffi::VSPropertyType_ptVideoFrame as i32 => Ok(ValueType::VideoFrame),
+            x if x == ffi::VSPropertyType_ptAudioFrame as i32 => Ok(ValueType::AudioFrame),
+            x if x == ffi::VSPropertyType_ptFunction as i32 => Ok(ValueType::Function),
             _ => unreachable!(),
         }
     }
@@ -371,7 +372,7 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn delete_key_raw_unchecked(&mut self, key: &CStr) -> Result<()> {
-        let result = API::get_cached().prop_delete_key(self, key.as_ptr());
+        let result = unsafe { API::get_cached().prop_delete_key(self, key.as_ptr()) };
         if result == 0 {
             Err(Error::KeyNotFound)
         } else {
@@ -385,47 +386,6 @@ impl<'elem> Map<'elem> {
     pub fn delete_key(&mut self, key: &str) -> Result<()> {
         let key = Map::make_raw_key(key)?;
         unsafe { self.delete_key_raw_unchecked(&key) }
-    }
-
-    /// Touches the key. That is, if the key exists, nothing happens, otherwise a key is created
-    /// with no values associated.
-    ///
-    /// # Safety
-    /// The caller must ensure `key` is valid.
-    pub(crate) unsafe fn touch_raw_unchecked(&mut self, key: &CStr, value_type: ValueType) {
-        #[rustfmt::skip]
-        macro_rules! touch_value {
-            ($func:ident, $value:expr) => {{
-                let result =
-                    API::get_cached().$func(
-                        self,
-                        key.as_ptr(),
-                        $value,
-                        ffi::VSPropAppendMode::paTouch
-                    );
-                debug_assert!(result == 0);
-            }};
-        }
-
-        match value_type {
-            ValueType::Int => touch_value!(prop_set_int, 0),
-            ValueType::Float => touch_value!(prop_set_float, 0f64),
-            ValueType::Data => touch_value!(prop_set_data, &[]),
-            ValueType::Node => touch_value!(prop_set_node, ptr::null_mut()),
-            ValueType::Frame => touch_value!(prop_set_frame, ptr::null()),
-            ValueType::Function => touch_value!(prop_set_func, ptr::null_mut()),
-        }
-    }
-
-    /// Touches the key. That is, if the key exists, nothing happens, otherwise a key is created
-    /// with no values associated.
-    #[inline]
-    pub fn touch(&mut self, key: &str, value_type: ValueType) -> Result<()> {
-        let key = Map::make_raw_key(key)?;
-        unsafe {
-            self.touch_raw_unchecked(&key, value_type);
-        }
-        Ok(())
     }
 
     /// Retrieves a property value.
@@ -474,7 +434,6 @@ impl<'elem> Map<'elem> {
     /// Retrieves an array of integers from a map.
     ///
     /// This is faster than iterating over a `get_int_iter()`.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub fn get_int_array(&self, key: &str) -> Result<&[i64]> {
         let key = Map::make_raw_key(key)?;
@@ -493,7 +452,6 @@ impl<'elem> Map<'elem> {
     /// Retrieves an array of floating point numbers from a map.
     ///
     /// This is faster than iterating over a `get_float_iter()`.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub fn get_float_array(&self, key: &str) -> Result<&[f64]> {
         let key = Map::make_raw_key(key)?;
@@ -530,14 +488,14 @@ impl<'elem> Map<'elem> {
     ///
     /// This function retrieves the first value associated with the key.
     #[inline]
-    pub fn get_node(&self, key: &str) -> Result<Node<'elem>> {
+    pub fn get_video_node(&self, key: &str) -> Result<Node<'elem>> {
         let key = Map::make_raw_key(key)?;
-        unsafe { self.get_node_raw_unchecked(&key, 0) }
+        unsafe { self.get_video_node_raw_unchecked(&key, 0) }
     }
 
     /// Retrieves nodes from a map.
     #[inline]
-    pub fn get_node_iter<'map>(
+    pub fn get_video_node_iter<'map>(
         &'map self,
         key: &str,
     ) -> Result<ValueIter<'map, 'elem, Node<'elem>>> {
@@ -549,14 +507,14 @@ impl<'elem> Map<'elem> {
     ///
     /// This function retrieves the first value associated with the key.
     #[inline]
-    pub fn get_frame(&self, key: &str) -> Result<FrameRef<'elem>> {
+    pub fn get_video_frame(&self, key: &str) -> Result<FrameRef<'elem>> {
         let key = Map::make_raw_key(key)?;
-        unsafe { self.get_frame_raw_unchecked(&key, 0) }
+        unsafe { self.get_video_frame_raw_unchecked(&key, 0) }
     }
 
     /// Retrieves frames from a map.
     #[inline]
-    pub fn get_frame_iter<'map>(
+    pub fn get_video_frame_iter<'map>(
         &'map self,
         key: &str,
     ) -> Result<ValueIter<'map, 'elem, FrameRef<'elem>>> {
@@ -590,7 +548,8 @@ impl<'elem> Map<'elem> {
     #[inline]
     pub(crate) unsafe fn get_int_raw_unchecked(&self, key: &CStr, index: i32) -> Result<i64> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_int(self, key.as_ptr(), index, &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_int(self, key.as_ptr(), index, &mut error) };
         handle_get_prop_error(error)?;
 
         Ok(value)
@@ -600,15 +559,16 @@ impl<'elem> Map<'elem> {
     ///
     /// # Safety
     /// The caller must ensure `key` is valid.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub(crate) unsafe fn get_int_array_raw_unchecked(&self, key: &CStr) -> Result<&[i64]> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_int_array(self, key.as_ptr(), &mut error);
+        let value = unsafe { API::get_cached().prop_get_int_array(self, key.as_ptr(), &mut error) };
         handle_get_prop_error(error)?;
 
-        let length = self.value_count_raw_unchecked(key).unwrap();
-        Ok(slice::from_raw_parts(value, length))
+        unsafe {
+            let length = self.value_count_raw_unchecked(key).unwrap();
+            Ok(slice::from_raw_parts(value, length))
+        }
     }
 
     /// Retrieves a floating point number from a map.
@@ -618,7 +578,8 @@ impl<'elem> Map<'elem> {
     #[inline]
     pub(crate) unsafe fn get_float_raw_unchecked(&self, key: &CStr, index: i32) -> Result<f64> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_float(self, key.as_ptr(), index, &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_float(self, key.as_ptr(), index, &mut error) };
         handle_get_prop_error(error)?;
 
         Ok(value)
@@ -628,15 +589,17 @@ impl<'elem> Map<'elem> {
     ///
     /// # Safety
     /// The caller must ensure `key` is valid.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub(crate) unsafe fn get_float_array_raw_unchecked(&self, key: &CStr) -> Result<&[f64]> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_float_array(self, key.as_ptr(), &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_float_array(self, key.as_ptr(), &mut error) };
         handle_get_prop_error(error)?;
 
-        let length = self.value_count_raw_unchecked(key).unwrap();
-        Ok(slice::from_raw_parts(value, length))
+        unsafe {
+            let length = self.value_count_raw_unchecked(key).unwrap();
+            Ok(slice::from_raw_parts(value, length))
+        }
     }
 
     /// Retrieves data from a map.
@@ -646,15 +609,17 @@ impl<'elem> Map<'elem> {
     #[inline]
     pub(crate) unsafe fn get_data_raw_unchecked(&self, key: &CStr, index: i32) -> Result<&[u8]> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_data(self, key.as_ptr(), index, &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_data(self, key.as_ptr(), index, &mut error) };
         handle_get_prop_error(error)?;
 
         let mut error = 0;
-        let length = API::get_cached().prop_get_data_size(self, key.as_ptr(), index, &mut error);
+        let length =
+            unsafe { API::get_cached().prop_get_data_size(self, key.as_ptr(), index, &mut error) };
         debug_assert!(error == 0);
         debug_assert!(length >= 0);
 
-        Ok(slice::from_raw_parts(value as *const u8, length as usize))
+        unsafe { Ok(slice::from_raw_parts(value as *const u8, length as usize)) }
     }
 
     /// Retrieves a node from a map.
@@ -662,16 +627,17 @@ impl<'elem> Map<'elem> {
     /// # Safety
     /// The caller must ensure `key` is valid.
     #[inline]
-    pub(crate) unsafe fn get_node_raw_unchecked(
+    pub(crate) unsafe fn get_video_node_raw_unchecked(
         &self,
         key: &CStr,
         index: i32,
     ) -> Result<Node<'elem>> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_node(self, key.as_ptr(), index, &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_node(self, key.as_ptr(), index, &mut error) };
         handle_get_prop_error(error)?;
 
-        Ok(Node::from_ptr(value))
+        unsafe { Ok(Node::from_ptr(value)) }
     }
 
     /// Retrieves a frame from a map.
@@ -679,16 +645,17 @@ impl<'elem> Map<'elem> {
     /// # Safety
     /// The caller must ensure `key` is valid.
     #[inline]
-    pub(crate) unsafe fn get_frame_raw_unchecked(
+    pub(crate) unsafe fn get_video_frame_raw_unchecked(
         &self,
         key: &CStr,
         index: i32,
     ) -> Result<FrameRef<'elem>> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_frame(self, key.as_ptr(), index, &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_frame(self, key.as_ptr(), index, &mut error) };
         handle_get_prop_error(error)?;
 
-        Ok(FrameRef::from_ptr(value))
+        unsafe { Ok(FrameRef::from_ptr(value)) }
     }
 
     /// Retrieves a function from a map.
@@ -702,10 +669,11 @@ impl<'elem> Map<'elem> {
         index: i32,
     ) -> Result<Function<'elem>> {
         let mut error = 0;
-        let value = API::get_cached().prop_get_func(self, key.as_ptr(), index, &mut error);
+        let value =
+            unsafe { API::get_cached().prop_get_func(self, key.as_ptr(), index, &mut error) };
         handle_get_prop_error(error)?;
 
-        Ok(Function::from_ptr(value))
+        unsafe { Ok(Function::from_ptr(value)) }
     }
 
     /// Appends an integer to a map.
@@ -756,8 +724,9 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn append_int_raw_unchecked(&mut self, key: &CStr, x: i64) -> Result<()> {
-        let error =
-            API::get_cached().prop_set_int(self, key.as_ptr(), x, ffi::VSPropAppendMode::paAppend);
+        let error = unsafe {
+            API::get_cached().prop_set_int(self, key.as_ptr(), x, ffi::VSMapAppendMode_maAppend)
+        };
 
         handle_append_prop_error(error)
     }
@@ -768,12 +737,9 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn append_float_raw_unchecked(&mut self, key: &CStr, x: f64) -> Result<()> {
-        let error = API::get_cached().prop_set_float(
-            self,
-            key.as_ptr(),
-            x,
-            ffi::VSPropAppendMode::paAppend,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_float(self, key.as_ptr(), x, ffi::VSMapAppendMode_maAppend)
+        };
 
         handle_append_prop_error(error)
     }
@@ -784,8 +750,9 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn append_data_raw_unchecked(&mut self, key: &CStr, x: &[u8]) -> Result<()> {
-        let error =
-            API::get_cached().prop_set_data(self, key.as_ptr(), x, ffi::VSPropAppendMode::paAppend);
+        let error = unsafe {
+            API::get_cached().prop_set_data(self, key.as_ptr(), x, ffi::VSMapAppendMode_maAppend)
+        };
 
         handle_append_prop_error(error)
     }
@@ -800,12 +767,14 @@ impl<'elem> Map<'elem> {
         key: &CStr,
         x: &Node<'elem>,
     ) -> Result<()> {
-        let error = API::get_cached().prop_set_node(
-            self,
-            key.as_ptr(),
-            x.ptr(),
-            ffi::VSPropAppendMode::paAppend,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_node(
+                self,
+                key.as_ptr(),
+                x.ptr(),
+                ffi::VSMapAppendMode_maAppend,
+            )
+        };
 
         handle_append_prop_error(error)
     }
@@ -820,12 +789,14 @@ impl<'elem> Map<'elem> {
         key: &CStr,
         x: &Frame<'elem>,
     ) -> Result<()> {
-        let error = API::get_cached().prop_set_frame(
-            self,
-            key.as_ptr(),
-            x.deref(),
-            ffi::VSPropAppendMode::paAppend,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_frame(
+                self,
+                key.as_ptr(),
+                x.deref(),
+                ffi::VSMapAppendMode_maAppend,
+            )
+        };
 
         handle_append_prop_error(error)
     }
@@ -840,12 +811,14 @@ impl<'elem> Map<'elem> {
         key: &CStr,
         x: &Function<'elem>,
     ) -> Result<()> {
-        let error = API::get_cached().prop_set_func(
-            self,
-            key.as_ptr(),
-            x.ptr(),
-            ffi::VSPropAppendMode::paAppend,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_func(
+                self,
+                key.as_ptr(),
+                x.ptr(),
+                ffi::VSMapAppendMode_maAppend,
+            )
+        };
 
         handle_append_prop_error(error)
     }
@@ -863,7 +836,6 @@ impl<'elem> Map<'elem> {
     /// Sets a property value to an integer array.
     ///
     /// This is faster than calling `append_int()` in a loop.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub fn set_int_array(&mut self, key: &str, x: &[i64]) -> Result<()> {
         let key = Map::make_raw_key(key)?;
@@ -886,7 +858,6 @@ impl<'elem> Map<'elem> {
     /// Sets a property value to a floating point number array.
     ///
     /// This is faster than calling `append_float()` in a loop.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub fn set_float_array(&mut self, key: &str, x: &[f64]) -> Result<()> {
         let key = Map::make_raw_key(key)?;
@@ -942,8 +913,9 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn set_int_raw_unchecked(&mut self, key: &CStr, x: i64) {
-        let error =
-            API::get_cached().prop_set_int(self, key.as_ptr(), x, ffi::VSPropAppendMode::paReplace);
+        let error = unsafe {
+            API::get_cached().prop_set_int(self, key.as_ptr(), x, ffi::VSMapAppendMode_maReplace)
+        };
 
         debug_assert!(error == 0);
     }
@@ -955,10 +927,9 @@ impl<'elem> Map<'elem> {
     ///
     /// # Panics
     /// Panics if `x.len()` can't fit in an `i32`.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub(crate) unsafe fn set_int_array_raw_unchecked(&mut self, key: &CStr, x: &[i64]) {
-        let error = API::get_cached().prop_set_int_array(self, key.as_ptr(), x);
+        let error = unsafe { API::get_cached().prop_set_int_array(self, key.as_ptr(), x) };
 
         debug_assert!(error == 0);
     }
@@ -969,12 +940,9 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn set_float_raw_unchecked(&mut self, key: &CStr, x: f64) {
-        let error = API::get_cached().prop_set_float(
-            self,
-            key.as_ptr(),
-            x,
-            ffi::VSPropAppendMode::paReplace,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_float(self, key.as_ptr(), x, ffi::VSMapAppendMode_maReplace)
+        };
 
         debug_assert!(error == 0);
     }
@@ -986,10 +954,9 @@ impl<'elem> Map<'elem> {
     ///
     /// # Panics
     /// Panics if `x.len()` can't fit in an `i32`.
-    #[cfg(feature = "gte-vapoursynth-api-31")]
     #[inline]
     pub(crate) unsafe fn set_float_array_raw_unchecked(&mut self, key: &CStr, x: &[f64]) {
-        let error = API::get_cached().prop_set_float_array(self, key.as_ptr(), x);
+        let error = unsafe { API::get_cached().prop_set_float_array(self, key.as_ptr(), x) };
 
         debug_assert!(error == 0);
     }
@@ -1000,12 +967,9 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn set_data_raw_unchecked(&mut self, key: &CStr, x: &[u8]) {
-        let error = API::get_cached().prop_set_data(
-            self,
-            key.as_ptr(),
-            x,
-            ffi::VSPropAppendMode::paReplace,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_data(self, key.as_ptr(), x, ffi::VSMapAppendMode_maReplace)
+        };
 
         debug_assert!(error == 0);
     }
@@ -1016,12 +980,14 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn set_node_raw_unchecked(&mut self, key: &CStr, x: &Node<'elem>) {
-        let error = API::get_cached().prop_set_node(
-            self,
-            key.as_ptr(),
-            x.ptr(),
-            ffi::VSPropAppendMode::paReplace,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_node(
+                self,
+                key.as_ptr(),
+                x.ptr(),
+                ffi::VSMapAppendMode_maReplace,
+            )
+        };
 
         debug_assert!(error == 0);
     }
@@ -1032,12 +998,14 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn set_frame_raw_unchecked(&mut self, key: &CStr, x: &Frame<'elem>) {
-        let error = API::get_cached().prop_set_frame(
-            self,
-            key.as_ptr(),
-            x.deref(),
-            ffi::VSPropAppendMode::paReplace,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_frame(
+                self,
+                key.as_ptr(),
+                x.deref(),
+                ffi::VSMapAppendMode_maReplace,
+            )
+        };
 
         debug_assert!(error == 0);
     }
@@ -1048,12 +1016,14 @@ impl<'elem> Map<'elem> {
     /// The caller must ensure `key` is valid.
     #[inline]
     pub(crate) unsafe fn set_function_raw_unchecked(&mut self, key: &CStr, x: &Function<'elem>) {
-        let error = API::get_cached().prop_set_func(
-            self,
-            key.as_ptr(),
-            x.ptr(),
-            ffi::VSPropAppendMode::paReplace,
-        );
+        let error = unsafe {
+            API::get_cached().prop_set_func(
+                self,
+                key.as_ptr(),
+                x.ptr(),
+                ffi::VSMapAppendMode_maReplace,
+            )
+        };
 
         debug_assert!(error == 0);
     }

@@ -55,8 +55,8 @@ fn make_environment() -> Environment {
 }
 
 fn verify_pixels<T: Component + Copy + Debug + PartialEq>(frame: &Frame, expected: [T; 3]) {
-    for plane_num in 0..3 {
-        let expected_row = vec![expected[plane_num]; frame.width(plane_num)];
+    for (plane_num, expected_val) in expected.iter().enumerate() {
+        let expected_row = vec![*expected_val; frame.width(plane_num)];
 
         for row in 0..frame.height(plane_num) {
             assert_eq!(&expected_row[..], frame.plane_row(plane_num, row));
@@ -71,7 +71,7 @@ fn test_passthrough() {
     let mut env = make_environment();
     env.eval_file("test-vpy/passthrough.vpy", EvalFlags::Nothing)
         .unwrap();
-    let node = env.get_output(0).unwrap();
+    let node = env.get_output(0).unwrap().0;
 
     verify_pixels::<u8>(&node.get_frame(0).unwrap(), [1 << 6, 1 << 6, 0]);
     verify_pixels::<u16>(&node.get_frame(1).unwrap(), [1 << 7, 1 << 7, 0]);
@@ -88,7 +88,7 @@ fn test_invert() {
     let mut env = make_environment();
     env.eval_file("test-vpy/invert.vpy", EvalFlags::Nothing)
         .unwrap();
-    let node = env.get_output(0).unwrap();
+    let node = env.get_output(0).unwrap().0;
 
     verify_pixels::<u8>(
         &node.get_frame(0).unwrap(),
@@ -125,9 +125,9 @@ fn test_random_noise() {
     let mut env = make_environment();
     env.eval_file("test-vpy/random_noise.vpy", EvalFlags::Nothing)
         .unwrap();
-    let node = env.get_output(0).unwrap();
+    let node = env.get_output(0).unwrap().0;
 
-    assert_eq!(node.info().num_frames, 10.into());
+    assert_eq!(node.info().num_frames, 10);
     assert_eq!(
         node.info().framerate,
         Framerate {
@@ -153,9 +153,9 @@ fn test_make_random_noise() {
     let mut env = make_environment();
     env.eval_file("test-vpy/make_random_noise.vpy", EvalFlags::Nothing)
         .unwrap();
-    let node = env.get_output(0).unwrap();
+    let node = env.get_output(0).unwrap().0;
 
-    assert_eq!(node.info().num_frames, 10.into());
+    assert_eq!(node.info().num_frames, 10);
     assert_eq!(
         node.info().framerate,
         Framerate {
