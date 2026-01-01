@@ -1,6 +1,6 @@
 //! VapourSynth frame formats.
 
-use std::ffi::CStr;
+use std::ffi::{CStr, c_char};
 use std::fmt::{self, Display};
 use std::ops::Deref;
 use std::ptr;
@@ -181,7 +181,7 @@ impl<'core> Format<'core> {
         // V4 requires a buffer to write the name into
         // Format names are typically short (e.g., "YUV420P8")
         const NAME_BUF_SIZE: usize = 64;
-        let mut buf = [0i8; NAME_BUF_SIZE];
+        let mut buf = [0 as c_char; NAME_BUF_SIZE];
 
         unsafe {
             let api = API::get_cached();

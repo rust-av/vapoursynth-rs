@@ -757,7 +757,7 @@ impl API {
     pub(crate) unsafe fn get_video_format_name(
         self,
         format: *const ffi::VSVideoFormat,
-        buffer: *mut i8,
+        buffer: *mut c_char,
     ) -> i32 {
         (self.handle.as_ref().getVideoFormatName.unwrap())(format, buffer)
     }
