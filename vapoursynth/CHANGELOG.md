@@ -1,6 +1,10 @@
 # Changelog
 
-## v4.0.0 (2025-11-29)
+## v0.5.1 (2026-01-02)
+
+- Fix compilation issue on AArch64
+
+## v0.5.0 (2025-11-29)
 
 - Migrate to v4 VapourSynth API
 - Migrate to 2024 edition

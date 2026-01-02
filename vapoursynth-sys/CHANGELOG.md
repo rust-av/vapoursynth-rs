@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.0.0 (2025-11-29)
+## v0.5.0 (2025-11-29)
 
 - Replace with bindings to v4 VapourSynth API
 
