@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.2 (2026-01-08)
+
+- Reduce the number of extra imports needed when using plugin creation macros
+- Re-export `anyhow` for convenience
+
 ## v0.5.1 (2026-01-02)
 
 - Fix compilation issue on AArch64

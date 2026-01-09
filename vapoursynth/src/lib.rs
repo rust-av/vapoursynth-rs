@@ -179,4 +179,6 @@ pub mod prelude {
     pub use super::vsscript::{self, Environment, EvalFlags};
 }
 
+pub use anyhow;
+
 mod tests;
