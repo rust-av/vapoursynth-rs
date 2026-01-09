@@ -54,17 +54,20 @@ pub struct ValueIter<'map, 'elem: 'map, T> {
 
 macro_rules! impl_value_iter {
     ($value_type:path, $type:ty, $func:ident) => {
-        impl<'map, 'elem> ValueIter<'map, 'elem, $type> {
+        impl<'map, 'elem> $crate::map::ValueIter<'map, 'elem, $type> {
             /// Creates a `ValueIter` from the given `map` and `key`.
             ///
             /// # Safety
             /// The caller must ensure `key` is valid.
             #[inline]
-            pub(crate) unsafe fn new(map: &'map Map<'elem>, key: CString) -> Result<Self> {
+            pub(crate) unsafe fn new(
+                map: &'map $crate::prelude::Map<'elem>,
+                key: CString,
+            ) -> $crate::map::Result<Self> {
                 // Check if the value type is correct.
                 match map.value_type_raw_unchecked(&key)? {
                     $value_type => {}
-                    _ => return Err(Error::WrongValueType),
+                    _ => return Err($crate::map::Error::WrongValueType),
                 };
 
                 let count = map.value_count_raw_unchecked(&key)? as i32;
@@ -73,12 +76,12 @@ macro_rules! impl_value_iter {
                     key,
                     count,
                     index: 0,
-                    _variance: PhantomData,
+                    _variance: std::marker::PhantomData,
                 })
             }
         }
 
-        impl<'map, 'elem> Iterator for ValueIter<'map, 'elem, $type> {
+        impl<'map, 'elem> std::iter::Iterator for $crate::map::ValueIter<'map, 'elem, $type> {
             type Item = $type;
 
             #[inline]
@@ -100,7 +103,10 @@ macro_rules! impl_value_iter {
             }
         }
 
-        impl<'map, 'elem> ExactSizeIterator for ValueIter<'map, 'elem, $type> {}
+        impl<'map, 'elem> std::iter::ExactSizeIterator
+            for $crate::map::ValueIter<'map, 'elem, $type>
+        {
+        }
     };
 }
 

@@ -1,6 +1,6 @@
 //! Things related to making VapourSynth plugins.
 
-use anyhow::Error;
+use anyhow::Result;
 
 use crate::api::API;
 use crate::core::CoreRef;
@@ -94,7 +94,7 @@ pub trait FilterFunction: Send + Sync {
         api: API,
         core: CoreRef<'core>,
         args: &Map<'core>,
-    ) -> Result<Option<Box<dyn Filter<'core> + 'core>>, Error>;
+    ) -> Result<Option<Box<dyn Filter<'core> + 'core>>>;
 }
 
 /// A filter interface.
@@ -122,7 +122,7 @@ pub trait Filter<'core>: Send + Sync {
         core: CoreRef<'core>,
         context: FrameContext,
         n: usize,
-    ) -> Result<Option<FrameRef<'core>>, Error>;
+    ) -> Result<Option<FrameRef<'core>>>;
 
     /// Returns the requested frame.
     ///
@@ -139,7 +139,7 @@ pub trait Filter<'core>: Send + Sync {
         core: CoreRef<'core>,
         context: FrameContext,
         n: usize,
-    ) -> Result<FrameRef<'core>, Error>;
+    ) -> Result<FrameRef<'core>>;
 }
 
 /// An internal trait representing a filter argument type.
@@ -432,10 +432,10 @@ macro_rules! make_filter_function {
             #[inline]
             fn create<'core>(
                 &self,
-                api: API,
-                core: CoreRef<'core>,
-                args: &Map<'core>,
-            ) -> Result<Option<Box<dyn $crate::plugins::Filter<'core> + 'core>>, Error> {
+                api: $crate::prelude::API,
+                core: $crate::core::CoreRef<'core>,
+                args: &$crate::prelude::Map<'core>,
+            ) -> $crate::anyhow::Result<Option<Box<dyn $crate::plugins::Filter<'core> + 'core>>> {
                 $create_fn_name(
                     api,
                     core,

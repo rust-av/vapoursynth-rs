@@ -38,7 +38,7 @@ macro_rules! prop_get_something {
         #[inline]
         pub(crate) unsafe fn $name(
             self,
-            map: &ffi::VSMap,
+            map: &$crate::ffi::VSMap,
             key: *const c_char,
             index: i32,
             error: &mut i32,
@@ -53,10 +53,10 @@ macro_rules! prop_set_something {
         #[inline]
         pub(crate) unsafe fn $name(
             self,
-            map: &mut ffi::VSMap,
+            map: &mut $crate::ffi::VSMap,
             key: *const c_char,
             value: $type,
-            append: ffi::VSMapAppendMode,
+            append: $crate::ffi::VSMapAppendMode,
         ) -> i32 {
             (self.handle.as_ref().$func.unwrap())(map, key, value, append as i32)
         }
