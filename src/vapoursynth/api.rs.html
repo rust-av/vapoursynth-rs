@@ -38,7 +38,7 @@
 <a href=#38 id=38 data-nosnippet>38</a>        <span class="attr">#[inline]
 <a href=#39 id=39 data-nosnippet>39</a>        </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span><span class="macro-nonterminal">$name</span>(
 <a href=#40 id=40 data-nosnippet>40</a>            <span class="self">self</span>,
-<a href=#41 id=41 data-nosnippet>41</a>            map: <span class="kw-2">&amp;</span>ffi::VSMap,
+<a href=#41 id=41 data-nosnippet>41</a>            map: <span class="kw-2">&amp;</span><span class="macro-nonterminal">$crate::ffi::VSMap</span>,
 <a href=#42 id=42 data-nosnippet>42</a>            key: <span class="kw-2">*const </span>c_char,
 <a href=#43 id=43 data-nosnippet>43</a>            index: i32,
 <a href=#44 id=44 data-nosnippet>44</a>            error: <span class="kw-2">&amp;mut </span>i32,
@@ -53,10 +53,10 @@
 <a href=#53 id=53 data-nosnippet>53</a>        <span class="attr">#[inline]
 <a href=#54 id=54 data-nosnippet>54</a>        </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span><span class="macro-nonterminal">$name</span>(
 <a href=#55 id=55 data-nosnippet>55</a>            <span class="self">self</span>,
-<a href=#56 id=56 data-nosnippet>56</a>            map: <span class="kw-2">&amp;mut </span>ffi::VSMap,
+<a href=#56 id=56 data-nosnippet>56</a>            map: <span class="kw-2">&amp;mut </span><span class="macro-nonterminal">$crate::ffi::VSMap</span>,
 <a href=#57 id=57 data-nosnippet>57</a>            key: <span class="kw-2">*const </span>c_char,
 <a href=#58 id=58 data-nosnippet>58</a>            value: <span class="macro-nonterminal">$</span><span class="kw">type</span>,
-<a href=#59 id=59 data-nosnippet>59</a>            <span class="macro-nonterminal">append</span>: ffi::VSMapAppendMode,
+<a href=#59 id=59 data-nosnippet>59</a>            <span class="macro-nonterminal">append</span>: <span class="macro-nonterminal">$crate::ffi::VSMapAppendMode</span>,
 <a href=#60 id=60 data-nosnippet>60</a>        ) -&gt; i32 {
 <a href=#61 id=61 data-nosnippet>61</a>            (<span class="self">self</span>.handle.as_ref().<span class="macro-nonterminal">$func</span>.unwrap())(map, key, value, append <span class="kw">as </span>i32)
 <a href=#62 id=62 data-nosnippet>62</a>        }

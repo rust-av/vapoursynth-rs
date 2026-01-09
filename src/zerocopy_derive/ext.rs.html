@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zerocopy-derive-0.8.31/src/ext.rs`."><title>ext.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="zerocopy_derive" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0 (ded5c06cf 2025-12-08)" data-channel="1.92.0" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">zerocopy_derive/</div>ext.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="comment">// Copyright 2019 The Fuchsia Authors
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/zerocopy-derive-0.8.33/src/ext.rs`."><title>ext.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-ca0dd0c4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="zerocopy_derive" data-themes="" data-resource-suffix="" data-rustdoc-version="1.92.0 (ded5c06cf 2025-12-08)" data-channel="1.92.0" data-search-js="search-d69d8955.js" data-stringdex-js="stringdex-c3e638e9.js" data-settings-js="settings-c38705f0.js" ><script src="../../static.files/storage-e2aeef58.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-ce535bd0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-263c88ec.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">zerocopy_derive/</div>ext.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="comment">// Copyright 2019 The Fuchsia Authors
 <a href=#2 id=2 data-nosnippet>2</a>//
 <a href=#3 id=3 data-nosnippet>3</a>// Licensed under a BSD-style license &lt;LICENSE-BSD&gt;, Apache License, Version 2.0
 <a href=#4 id=4 data-nosnippet>4</a>// &lt;LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0&gt;, or the MIT
@@ -8,7 +8,7 @@
 <a href=#8 id=8 data-nosnippet>8</a>
 <a href=#9 id=9 data-nosnippet>9</a></span><span class="kw">use </span>proc_macro2::{Span, TokenStream};
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>quote::ToTokens;
-<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>syn::{Data, DataEnum, DataStruct, DataUnion, Field, Ident, Index, Type, Visibility};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span>syn::{Data, DataEnum, DataStruct, DataUnion, Field, Ident, Index, Type, Variant, Visibility};
 <a href=#12 id=12 data-nosnippet>12</a>
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>DataExt {
 <a href=#14 id=14 data-nosnippet>14</a>    <span class="doccomment">/// Extracts the names and types of all fields. For enums, extracts the
@@ -21,7 +21,7 @@
 <a href=#21 id=21 data-nosnippet>21</a>    /// generating is_bit_valid, which cares about where they live.
 <a href=#22 id=22 data-nosnippet>22</a>    </span><span class="kw">fn </span>fields(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;;
 <a href=#23 id=23 data-nosnippet>23</a>
-<a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;&gt;;
+<a href=#24 id=24 data-nosnippet>24</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Variant&gt;, Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;)&gt;;
 <a href=#25 id=25 data-nosnippet>25</a>
 <a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">fn </span>tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ident&gt;;
 <a href=#27 id=27 data-nosnippet>27</a>}
@@ -35,7 +35,7 @@
 <a href=#35 id=35 data-nosnippet>35</a>        }
 <a href=#36 id=36 data-nosnippet>36</a>    }
 <a href=#37 id=37 data-nosnippet>37</a>
-<a href=#38 id=38 data-nosnippet>38</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;&gt; {
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Variant&gt;, Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;)&gt; {
 <a href=#39 id=39 data-nosnippet>39</a>        <span class="kw">match </span><span class="self">self </span>{
 <a href=#40 id=40 data-nosnippet>40</a>            Data::Struct(strc) =&gt; strc.variants(),
 <a href=#41 id=41 data-nosnippet>41</a>            Data::Enum(enm) =&gt; enm.variants(),
@@ -57,8 +57,8 @@
 <a href=#57 id=57 data-nosnippet>57</a>        map_fields(<span class="kw-2">&amp;</span><span class="self">self</span>.fields)
 <a href=#58 id=58 data-nosnippet>58</a>    }
 <a href=#59 id=59 data-nosnippet>59</a>
-<a href=#60 id=60 data-nosnippet>60</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;&gt; {
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="macro">vec!</span>[<span class="self">self</span>.fields()]
+<a href=#60 id=60 data-nosnippet>60</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Variant&gt;, Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;)&gt; {
+<a href=#61 id=61 data-nosnippet>61</a>        <span class="macro">vec!</span>[(<span class="prelude-val">None</span>, <span class="self">self</span>.fields())]
 <a href=#62 id=62 data-nosnippet>62</a>    }
 <a href=#63 id=63 data-nosnippet>63</a>
 <a href=#64 id=64 data-nosnippet>64</a>    <span class="kw">fn </span>tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ident&gt; {
@@ -71,8 +71,8 @@
 <a href=#71 id=71 data-nosnippet>71</a>        map_fields(<span class="self">self</span>.variants.iter().flat_map(|var| <span class="kw-2">&amp;</span>var.fields))
 <a href=#72 id=72 data-nosnippet>72</a>    }
 <a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;&gt; {
-<a href=#75 id=75 data-nosnippet>75</a>        <span class="self">self</span>.variants.iter().map(|var| map_fields(<span class="kw-2">&amp;</span>var.fields)).collect()
+<a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Variant&gt;, Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;)&gt; {
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="self">self</span>.variants.iter().map(|var| (<span class="prelude-val">Some</span>(var), map_fields(<span class="kw-2">&amp;</span>var.fields))).collect()
 <a href=#76 id=76 data-nosnippet>76</a>    }
 <a href=#77 id=77 data-nosnippet>77</a>
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">fn </span>tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ident&gt; {
@@ -85,8 +85,8 @@
 <a href=#85 id=85 data-nosnippet>85</a>        map_fields(<span class="kw-2">&amp;</span><span class="self">self</span>.fields.named)
 <a href=#86 id=86 data-nosnippet>86</a>    }
 <a href=#87 id=87 data-nosnippet>87</a>
-<a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;&gt; {
-<a href=#89 id=89 data-nosnippet>89</a>        <span class="macro">vec!</span>[<span class="self">self</span>.fields()]
+<a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">fn </span>variants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Variant&gt;, Vec&lt;(<span class="kw-2">&amp;</span>Visibility, TokenStream, <span class="kw-2">&amp;</span>Type)&gt;)&gt; {
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="macro">vec!</span>[(<span class="prelude-val">None</span>, <span class="self">self</span>.fields())]
 <a href=#90 id=90 data-nosnippet>90</a>    }
 <a href=#91 id=91 data-nosnippet>91</a>
 <a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">fn </span>tag(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ident&gt; {
