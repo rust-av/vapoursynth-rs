@@ -47,6 +47,8 @@ impl Drop for Environment {
         unsafe {
             (api.handle().freeScript.unwrap())(self.handle.as_ptr());
         }
+        // Decrement environment count; may reset API cache if this was the last one
+        decrement_env_count();
     }
 }
 
@@ -75,6 +77,8 @@ impl Environment {
         if handle.is_null() {
             Err(Error::ScriptCreationFailed)
         } else {
+            // Track this environment for reference counting
+            increment_env_count();
             Ok(Self {
                 handle: unsafe { NonNull::new_unchecked(handle) },
             })

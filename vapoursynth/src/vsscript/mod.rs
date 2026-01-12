@@ -1,8 +1,7 @@
 //! VapourSynth script-related things.
 
 use std::ptr::{self, NonNull};
-use std::sync::Once;
-use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use vapoursynth_sys as ffi;
 
 /// A wrapper for the VSScript API.
@@ -16,6 +15,41 @@ unsafe impl Sync for VSScriptAPI {}
 
 /// A cached VSScript API pointer.
 static RAW_VSSCRIPT_API: AtomicPtr<ffi::VSSCRIPTAPI> = AtomicPtr::new(ptr::null_mut());
+
+/// Count of active Environment instances.
+static ENVIRONMENT_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// Increment the environment count (called on Environment creation).
+#[inline]
+pub(crate) fn increment_env_count() {
+    ENVIRONMENT_COUNT.fetch_add(1, Ordering::SeqCst);
+}
+
+/// Decrement the environment count and reset API cache if this was the last environment.
+#[inline]
+pub(crate) fn decrement_env_count() {
+    let prev = ENVIRONMENT_COUNT.fetch_sub(1, Ordering::SeqCst);
+    if prev == 1 {
+        // This was the last environment - reset cached APIs to force
+        // fresh initialization on next use. This helps prevent GPU filter
+        // state from persisting between script evaluations.
+        reset_api_cache();
+    }
+}
+
+/// Reset the cached VSScript API pointer.
+///
+/// This clears the cached API pointers, forcing fresh initialization
+/// on the next Environment creation. This can help resolve issues with
+/// GPU filters that cache state at the plugin level.
+///
+/// # Safety
+/// This should only be called when no Environments are active.
+#[inline]
+pub fn reset_api_cache() {
+    RAW_VSSCRIPT_API.store(ptr::null_mut(), Ordering::SeqCst);
+    crate::api::reset_api_cache();
+}
 
 impl VSScriptAPI {
     /// Retrieves the VSScript API.
@@ -75,13 +109,12 @@ impl VSScriptAPI {
 }
 
 /// Ensures the VSScript API has been initialized.
+///
+/// Note: This no longer uses `Once` to allow re-initialization after
+/// all Environments have been dropped and the API cache has been reset.
 #[inline]
 pub(crate) fn maybe_initialize() {
-    static ONCE: Once = Once::new();
-
-    ONCE.call_once(|| {
-        VSScriptAPI::get().expect("Failed to get VSScript API");
-    });
+    VSScriptAPI::get().expect("Failed to get VSScript API");
 }
 
 mod errors;

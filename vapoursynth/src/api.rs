@@ -126,8 +126,19 @@ impl API {
     pub(crate) unsafe fn set(handle: *const ffi::VSAPI) {
         RAW_API.store(handle as *mut _, Ordering::Relaxed);
     }
+}
 
-    /// Sends a message through VapourSynth’s logging framework.
+/// Reset the cached VapourSynth API pointer.
+///
+/// This is called by `vsscript::reset_api_cache()` when the last Environment
+/// is dropped, allowing fresh initialization on the next API call.
+#[inline]
+pub(crate) fn reset_api_cache() {
+    RAW_API.store(ptr::null_mut(), Ordering::SeqCst);
+}
+
+impl API {
+    /// Sends a message through VapourSynth's logging framework.
     #[inline]
     pub fn log(self, message_type: MessageType, message: &str) -> Result<(), NulError> {
         let message = CString::new(message)?;

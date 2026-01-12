@@ -176,7 +176,7 @@ pub mod prelude {
     pub use super::node::{GetFrameError, Node};
     pub use super::plugin::Plugin;
     pub use super::video_info::Property;
-    pub use super::vsscript::{self, Environment, EvalFlags};
+    pub use super::vsscript::{self, Environment, EvalFlags, reset_api_cache};
 }
 
 pub use anyhow;
