@@ -1,7 +1,6 @@
 //! VapourSynth script-related things.
 
 use std::ptr::{self, NonNull};
-use std::sync::Once;
 use std::sync::atomic::{AtomicPtr, Ordering};
 use vapoursynth_sys as ffi;
 
@@ -72,16 +71,6 @@ impl VSScriptAPI {
     pub(crate) fn handle(&self) -> &ffi::VSSCRIPTAPI {
         unsafe { self.handle.as_ref() }
     }
-}
-
-/// Ensures the VSScript API has been initialized.
-#[inline]
-pub(crate) fn maybe_initialize() {
-    static ONCE: Once = Once::new();
-
-    ONCE.call_once(|| {
-        VSScriptAPI::get().expect("Failed to get VSScript API");
-    });
 }
 
 mod errors;

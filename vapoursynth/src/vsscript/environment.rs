@@ -67,8 +67,6 @@ impl Environment {
     /// Useful if it is necessary to set some variable in the script environment before evaluating
     /// any scripts.
     pub fn new() -> Result<Self> {
-        maybe_initialize();
-
         let api = VSScriptAPI::get().expect("VSScript API not available");
         let handle = unsafe { (api.handle().createScript.unwrap())(ptr::null_mut()) };
 
