@@ -83,7 +83,6 @@ impl API {
 
         let handle = if handle.is_null() {
             // Attempt retrieving it otherwise.
-            crate::vsscript::maybe_initialize();
             let vsscript_api = crate::vsscript::VSScriptAPI::get()?;
             let version = (ffi::VAPOURSYNTH_API_MAJOR << 16 | ffi::VAPOURSYNTH_API_MINOR) as i32;
             let handle =
