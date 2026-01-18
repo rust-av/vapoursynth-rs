@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::ptr;
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicPtr, Ordering};
 use vapoursynth_sys as ffi;
 
 use crate::api::API;
@@ -13,6 +14,9 @@ use crate::vsscript::errors::Result;
 use crate::vsscript::*;
 
 use crate::vsscript::VSScriptError;
+
+/// A cached VSCore pointer for reuse across Environment instances.
+static RAW_CACHED_CORE: AtomicPtr<ffi::VSCore> = AtomicPtr::new(ptr::null_mut());
 
 /// VSScript file evaluation flags.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -67,8 +71,22 @@ impl Environment {
     /// Useful if it is necessary to set some variable in the script environment before evaluating
     /// any scripts.
     pub fn new() -> Result<Self> {
-        let api = VSScriptAPI::get().expect("VSScript API not available");
-        let handle = unsafe { (api.handle().createScript.unwrap())(ptr::null_mut()) };
+        let vsscript_api = VSScriptAPI::get().expect("VSScript API not available");
+        let api = API::get().ok_or(Error::NoAPI)?;
+
+        // Get or create a standalone core (won't be freed when scripts are freed)
+        let cached_core = RAW_CACHED_CORE.load(Ordering::Relaxed);
+        let core_ptr = if cached_core.is_null() {
+            // Create a standalone core that persists across Environment lifetimes
+            let core = api.create_core(0);
+            let ptr = core.ptr();
+            RAW_CACHED_CORE.store(ptr, Ordering::Relaxed);
+            ptr
+        } else {
+            cached_core
+        };
+
+        let handle = unsafe { (vsscript_api.handle().createScript.unwrap())(core_ptr) };
 
         if handle.is_null() {
             Err(Error::ScriptCreationFailed)
