@@ -3,10 +3,11 @@ use std::path::PathBuf;
 
 fn main() {
     const LIBRARY_DIR_VARIABLE: &str = "VAPOURSYNTH_LIB_DIR";
+    const VSSCRIPT_PATH_VARIABLE: &str = "VSSCRIPT_PATH";
 
     // Make sure the build script is re-run if our env variable is changed.
     println!("cargo:rerun-if-env-changed={}", LIBRARY_DIR_VARIABLE);
-    println!("cargo:rerun-if-changed=headers/wrapper.h");
+    println!("cargo:rerun-if-env-changed={}", VSSCRIPT_PATH_VARIABLE);
     println!("cargo:rerun-if-changed=headers/VapourSynth4.h");
     println!("cargo:rerun-if-changed=headers/VSScript4.h");
 
@@ -23,13 +24,25 @@ fn main() {
     let targets_macos = target.contains("apple-darwin");
 
     // Get the default library dir for some platforms.
-    let default_library_dir = if targets_windows {
+    let mut default_library_dir = if targets_windows {
         get_default_windows_library_dir(&target, &host)
     } else if targets_macos {
         get_default_macos_library_dir(&target, &host)
     } else {
         vec![]
     };
+
+    // Also try searching in VSScript location (in case of Python venv)
+    let vssccript_path = env::var(VSSCRIPT_PATH_VARIABLE);
+    if let Ok(vsscript_path) = vssccript_path {
+        // assume vapoursynth is alongside vsscript
+        if let Some(lib_path) = std::path::Path::new(&vsscript_path)
+            .parent()
+            .and_then(|e| e.to_str())
+        {
+            default_library_dir.push(lib_path.to_owned());
+        }
+    }
 
     // Library directory override or the default dir on windows.
     if let Ok(dir) = env::var(LIBRARY_DIR_VARIABLE) {
@@ -40,15 +53,8 @@ fn main() {
         }
     }
 
-    // Handle linking to VapourSynth libs.
+    // Handle linking to VapourSynth
     println!("cargo:rustc-link-lib=vapoursynth");
-
-    let vsscript_lib_name = if targets_windows {
-        "vsscript"
-    } else {
-        "vapoursynth-script"
-    };
-    println!("cargo:rustc-link-lib={}", vsscript_lib_name);
 }
 
 #[cfg(feature = "bindgen")]
@@ -56,6 +62,7 @@ fn generate_bindings() {
     // Generate bindings
     let bindings = bindgen::Builder::default()
         .header("headers/wrapper.h")
+        .blocklist_function("getVSScriptAPI") // VSScript is expected to be dynamically loaded
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");

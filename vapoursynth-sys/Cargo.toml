@@ -17,6 +17,7 @@ travis-ci = { repository = "rust-av/vapoursynth-rs" }
 appveyor = { repository = "rust-av/vapoursynth-rs" }
 
 [dependencies]
+libloading = "0.9.0"
 
 [build-dependencies]
 bindgen = { version = "0.72.1", optional = true }
@@ -25,3 +26,7 @@ bindgen = { version = "0.72.1", optional = true }
 default = []
 # Rebuild the bindings, primarily for development
 bindgen = ["dep:bindgen"]
+
+# Force RTLD_GLOBAL flag for dlopen, compatibiltiy with older VapourSynth versions
+# Only has an effect for `unix` target family
+vsscript-r73-compat = []
