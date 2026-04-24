@@ -15,3 +15,6 @@ vapoursynth = { path = "../vapoursynth" }
 
 [[bin]]
 name = "test"
+
+[features]
+vsscript-r73-compat = ["vapoursynth/vsscript-r73-compat"]

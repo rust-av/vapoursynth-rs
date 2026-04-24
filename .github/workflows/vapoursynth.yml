@@ -23,15 +23,15 @@ jobs:
       fail-fast: false
 
       matrix:
+        version: [R73]
         toolchain:
-          # I can't figure out how to install an older version of VapourSynth on macOS,
-          # so don't test macOS until we can test on the latest version again.
-          #  - stable-x86_64-apple-darwin
+          # FIXME: Look into macOS library paths
+          # - stable-aarch64-apple-darwin
           - stable-x86_64-unknown-linux-gnu
           - stable-aarch64-unknown-linux-gnu
         include:
-          #  - toolchain: stable-x86_64-apple-darwin
-          #    os: macOS-latest
+          # - toolchain: stable-aarch64-apple-darwin
+          #   os: macOS-latest
           - toolchain: stable-x86_64-unknown-linux-gnu
             os: ubuntu-latest
           - toolchain: stable-aarch64-unknown-linux-gnu
@@ -58,14 +58,14 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
           export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cd vapoursynth
-          python3 ../build/run-tests.py
+          python3 ../build/run-tests.py --requires-compat=${{ matrix.version == 'R73' }}
       - name: Run sample-plugin tests
         run: |
           export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
           export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cd sample-plugin
           cargo build --verbose
-          cargo run --verbose --bin test
+          cargo run ${{ matrix.version == 'R73' && '--features vsscript-r73-compat' }} --verbose --bin test
       - name: Run doc
         run: |
           export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
@@ -90,6 +90,7 @@ jobs:
       fail-fast: false
 
       matrix:
+        version: [R73]
         toolchain:
           - stable-x86_64-pc-windows-msvc
           - stable-x86_64-pc-windows-gnu
