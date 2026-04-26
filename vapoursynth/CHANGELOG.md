@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.3 (2026-04-26)
+
+- Minor optimizations to filter creation
+- Remove useless `maybe_initialize` function
+
 ## v0.5.2 (2026-01-08)
 
 - Reduce the number of extra imports needed when using plugin creation macros
