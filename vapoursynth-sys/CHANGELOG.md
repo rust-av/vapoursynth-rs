@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.0 (2026-04-26)
+
+- Fix compat for Vapoursynth R74.
+- This requires a breaking change where `getVSScriptAPI` must now be accessed through `VSScriptAPILoader`
+
 ## v0.5.0 (2025-11-29)
 
 - Replace with bindings to v4 VapourSynth API

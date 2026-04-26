@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.4 (2026-04-26)
+
+- Fix compat for Vapoursynth R74.
+
 ## v0.5.3 (2026-04-26)
 
 - Minor optimizations to filter creation
