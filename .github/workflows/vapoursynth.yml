@@ -23,53 +23,66 @@ jobs:
       fail-fast: false
 
       matrix:
-        version: [R73]
+        version: ['73', '74']
         toolchain:
-          # FIXME: Look into macOS library paths
-          # - stable-aarch64-apple-darwin
+          - stable-aarch64-apple-darwin
           - stable-x86_64-unknown-linux-gnu
           - stable-aarch64-unknown-linux-gnu
         include:
-          # - toolchain: stable-aarch64-apple-darwin
-          #   os: macOS-latest
+          - toolchain: stable-aarch64-apple-darwin
+            os: macOS-latest
           - toolchain: stable-x86_64-unknown-linux-gnu
             os: ubuntu-latest
           - toolchain: stable-aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
+        exclude:
+          # FIXME: Look into macOS library paths for R73
+          - toolchain: stable-aarch64-apple-darwin
+            version: '73'
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
-      - name: Install VapourSynth on MacOS
-        if: matrix.os == 'macOS-latest'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: 3.14
+          activate-environment: ${{ matrix.version != '73' }}
+
+      - name: Install VapourSynth Python Package
+        if: matrix.version != '73'
         run: |
-          brew install vapoursynth
-      - name: Install VapourSynth on Ubuntu 64-bit
-        if: matrix.toolchain == 'stable-x86_64-unknown-linux-gnu' || matrix.toolchain == 'stable-aarch64-unknown-linux-gnu'
+          uv pip install vapoursynth==${{ matrix.version }}
+          vapoursynth config
+          echo "VSSCRIPT_PATH=$(vapoursynth get-vsscript)" >> $GITHUB_ENV
+
+      - name: Build and install VapourSynth R73
+        if: >
+          matrix.version == '73' &&
+          (matrix.toolchain == 'stable-x86_64-unknown-linux-gnu' || matrix.toolchain == 'stable-aarch64-unknown-linux-gnu')
         run: |
-          build/script.sh
+          build/script.sh ${{ matrix.version }}
+          echo "LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "VAPOURSYNTH_LIB_DIR=/usr/local/lib" >> $GITHUB_ENV
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
+
       - name: Run tests
         run: |
-          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-          export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cd vapoursynth
-          python3 ../build/run-tests.py --requires-compat=${{ matrix.version == 'R73' }}
+          uv run ../build/run-tests.py --requires-compat=${{ matrix.version == '73' }}
       - name: Run sample-plugin tests
         run: |
-          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-          export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cd sample-plugin
           cargo build --verbose
-          cargo run ${{ matrix.version == 'R73' && '--features vsscript-r73-compat' }} --verbose --bin test
+          cargo run ${{ matrix.version == '73' && '--features vsscript-r73-compat' }} --verbose --bin test
       - name: Run doc
         run: |
-          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-          export VAPOURSYNTH_LIB_DIR=/usr/local/lib
           cargo doc --all-features --verbose
       - name: Copy index into the target directory
         if: matrix.toolchain == 'stable-x86_64-unknown-linux-gnu'
@@ -90,7 +103,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        version: [R73]
+        version: ['73', '74']
         toolchain:
           - stable-x86_64-pc-windows-msvc
           - stable-x86_64-pc-windows-gnu
@@ -104,23 +117,41 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Install VapourSynth for Windows 64-bit
-        if: matrix.arch == 'x86_64'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: 3.14
+          activate-environment: ${{ matrix.version != '73' }}
+
+      - name: Install VapourSynth Portable
+        if: matrix.arch == 'x86_64' && matrix.version == '73'
         run: |
           build/windows-script.ps1
+      - name: Add VS to PATH
+        if: matrix.version == '73'
+        shell: bash
+        run: |
+          echo "C:\Program Files\VapourSynth" >> $GITHUB_PATH
+      - name: Install VapourSynth Python Package
+        if: matrix.version != '73'
+        run: |
+          uv pip install vapoursynth==${{ matrix.version }}
+          vapoursynth config
+          "VSSCRIPT_PATH=$(vapoursynth get-vsscript)" >> "$env:GITHUB_ENV"
+
       - run: rustup set auto-self-update disable
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
+
       - name: Run tests
         run: |
-          $Env:Path += ";C:\Program Files\VapourSynth;"
           cd vapoursynth
-          python ../build/run-tests.py
+          uv run ../build/run-tests.py
       - name: Build sample-plugin
         run: |
-          $Env:Path += ";C:\Program Files\VapourSynth;"
           cd sample-plugin
           cargo build --verbose
       - name: Run sample-plugin tests
