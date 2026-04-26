@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2012-2021 Fredrik Mellbin
+* Copyright (c) 2012-2026 Fredrik Mellbin
 *
 * This file is part of VapourSynth.
 *
@@ -26,7 +26,9 @@
 
 #define VS_MAKE_VERSION(major, minor) (((major) << 16) | (minor))
 #define VAPOURSYNTH_API_MAJOR 4
-#if defined(VS_USE_LATEST_API) || defined(VS_USE_API_41)
+#if defined(VS_USE_LATEST_API) || defined(VS_USE_API_42)
+#define VAPOURSYNTH_API_MINOR 2
+#elif defined(VS_USE_API_41)
 #define VAPOURSYNTH_API_MINOR 1
 #else
 #define VAPOURSYNTH_API_MINOR 0
@@ -252,6 +254,16 @@ typedef struct VSCoreInfo {
     int64_t usedFramebufferSize;
 } VSCoreInfo;
 
+typedef struct VSCoreInfo2 {
+    const char *versionString;
+    int coreVersion;
+    int apiVersion;
+    int creationFlags;
+    int numThreads;
+    int64_t maxFramebufferSize;
+    int64_t usedFramebufferSize;
+} VSCoreInfo2;
+
 typedef struct VSVideoInfo {
     VSVideoFormat format;
     int64_t fpsNum;
@@ -285,7 +297,8 @@ typedef enum VSMessageType {
 typedef enum VSCoreCreationFlags {
     ccfEnableGraphInspection = 1,
     ccfDisableAutoLoading = 2,
-    ccfDisableLibraryUnloading = 4
+    ccfDisableLibraryUnloading = 4,
+    ccfEnableFrameRefDebug = 8
 } VSCoreCreationFlags;
 
 typedef enum VSPluginConfigFlags {
@@ -494,6 +507,10 @@ struct VSAPI {
     int64_t (VS_CC *getNodeProcessingTime)(VSNode *node, int reset) VS_NOEXCEPT; /* time spent processing frames in nanoseconds, reset sets the counter to 0 again */
     int64_t (VS_CC *getFreedNodeProcessingTime)(VSCore *core, int reset) VS_NOEXCEPT; /* time spent processing frames in nanoseconds in all destroyed nodes, reset sets the counter to 0 again */
 
+    /* Added in API 4.2 */
+#if VAPOURSYNTH_API_MINOR >= 2
+    void (VS_CC *getCoreInfo2)(VSCore *core, VSCoreInfo2 *info) VS_NOEXCEPT;
+
 #if defined(VS_GRAPH_API)
     /* !!! Experimental/expensive graph information, these function require both the major and minor version to match exactly when using them !!!
      * 
@@ -504,7 +521,10 @@ struct VSAPI {
      */
 
     const char *(VS_CC *getNodeCreationFunctionName)(VSNode *node, int level) VS_NOEXCEPT; /* level=0 returns the name of the function that created the filter, specifying a higher level will retrieve the function above that invoked it or NULL if a non-existent level is requested */
+    const char *(VS_CC *getNodeCreationPluginID)(VSNode *node, int level) VS_NOEXCEPT; /* level=0 returns the name of the function that created the filter, specifying a higher level will retrieve the function above that invoked it or NULL if a non-existent level is requested */
+    const char *(VS_CC *getNodeCreationPluginNS)(VSNode *node, int level) VS_NOEXCEPT; /* level=0 returns the name of the function that created the filter, specifying a higher level will retrieve the function above that invoked it or NULL if a non-existent level is requested */
     const VSMap *(VS_CC *getNodeCreationFunctionArguments)(VSNode *node, int level) VS_NOEXCEPT; /* level=0 returns a copy of the arguments passed to the function that created the filter, returns NULL if a non-existent level is requested */
+#endif
 #endif
 #endif
 };

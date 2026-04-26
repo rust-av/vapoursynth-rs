@@ -34,5 +34,7 @@ default = []
 # Enable the half::f16 type to be used for frame pixel data.
 f16-pixel-type = ["half"]
 
+vsscript-r73-compat = ["vapoursynth-sys/vsscript-r73-compat"]
+
 [package.metadata.docs.rs]
 features = ["f16-pixel-type"]

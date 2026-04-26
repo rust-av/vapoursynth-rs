@@ -10,7 +10,7 @@ pub const __USE_ISOC99: u32 = 1;
 pub const __USE_ISOC95: u32 = 1;
 pub const __USE_POSIX_IMPLICITLY: u32 = 1;
 pub const _POSIX_SOURCE: u32 = 1;
-pub const _POSIX_C_SOURCE: u32 = 200809;
+pub const _POSIX_C_SOURCE: u32 = 202405;
 pub const __USE_POSIX: u32 = 1;
 pub const __USE_POSIX2: u32 = 1;
 pub const __USE_POSIX199309: u32 = 1;
@@ -18,6 +18,7 @@ pub const __USE_POSIX199506: u32 = 1;
 pub const __USE_XOPEN2K: u32 = 1;
 pub const __USE_XOPEN2K8: u32 = 1;
 pub const _ATFILE_SOURCE: u32 = 1;
+pub const __USE_XOPEN2K24: u32 = 1;
 pub const __WORDSIZE: u32 = 64;
 pub const __WORDSIZE_TIME64_COMPAT32: u32 = 1;
 pub const __SYSCALL_WORDSIZE: u32 = 64;
@@ -37,7 +38,7 @@ pub const __STDC_IEC_60559_COMPLEX__: u32 = 201404;
 pub const __STDC_ISO_10646__: u32 = 201706;
 pub const __GNU_LIBRARY__: u32 = 6;
 pub const __GLIBC__: u32 = 2;
-pub const __GLIBC_MINOR__: u32 = 42;
+pub const __GLIBC_MINOR__: u32 = 43;
 pub const _SYS_CDEFS_H: u32 = 1;
 pub const __glibc_c99_flexarr_available: u32 = 1;
 pub const __LDOUBLE_REDIRECTS_TO_FLOAT128_ABI: u32 = 0;
@@ -446,6 +447,36 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct VSCoreInfo2 {
+    pub versionString: *const ::std::os::raw::c_char,
+    pub coreVersion: ::std::os::raw::c_int,
+    pub apiVersion: ::std::os::raw::c_int,
+    pub creationFlags: ::std::os::raw::c_int,
+    pub numThreads: ::std::os::raw::c_int,
+    pub maxFramebufferSize: i64,
+    pub usedFramebufferSize: i64,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of VSCoreInfo2"][::std::mem::size_of::<VSCoreInfo2>() - 40usize];
+    ["Alignment of VSCoreInfo2"][::std::mem::align_of::<VSCoreInfo2>() - 8usize];
+    ["Offset of field: VSCoreInfo2::versionString"]
+        [::std::mem::offset_of!(VSCoreInfo2, versionString) - 0usize];
+    ["Offset of field: VSCoreInfo2::coreVersion"]
+        [::std::mem::offset_of!(VSCoreInfo2, coreVersion) - 8usize];
+    ["Offset of field: VSCoreInfo2::apiVersion"]
+        [::std::mem::offset_of!(VSCoreInfo2, apiVersion) - 12usize];
+    ["Offset of field: VSCoreInfo2::creationFlags"]
+        [::std::mem::offset_of!(VSCoreInfo2, creationFlags) - 16usize];
+    ["Offset of field: VSCoreInfo2::numThreads"]
+        [::std::mem::offset_of!(VSCoreInfo2, numThreads) - 20usize];
+    ["Offset of field: VSCoreInfo2::maxFramebufferSize"]
+        [::std::mem::offset_of!(VSCoreInfo2, maxFramebufferSize) - 24usize];
+    ["Offset of field: VSCoreInfo2::usedFramebufferSize"]
+        [::std::mem::offset_of!(VSCoreInfo2, usedFramebufferSize) - 32usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct VSVideoInfo {
     pub format: VSVideoFormat,
     pub fpsNum: i64,
@@ -499,6 +530,7 @@ pub type VSMessageType = ::std::os::raw::c_uint;
 pub const VSCoreCreationFlags_ccfEnableGraphInspection: VSCoreCreationFlags = 1;
 pub const VSCoreCreationFlags_ccfDisableAutoLoading: VSCoreCreationFlags = 2;
 pub const VSCoreCreationFlags_ccfDisableLibraryUnloading: VSCoreCreationFlags = 4;
+pub const VSCoreCreationFlags_ccfEnableFrameRefDebug: VSCoreCreationFlags = 8;
 pub type VSCoreCreationFlags = ::std::os::raw::c_uint;
 pub const VSPluginConfigFlags_pcModifiable: VSPluginConfigFlags = 1;
 pub type VSPluginConfigFlags = ::std::os::raw::c_uint;
@@ -1483,6 +1515,3 @@ const _: () = {
     ["Offset of field: VSSCRIPTAPI::evalSetWorkingDir"]
         [::std::mem::offset_of!(VSSCRIPTAPI, evalSetWorkingDir) - 112usize];
 };
-unsafe extern "C" {
-    pub fn getVSScriptAPI(version: ::std::os::raw::c_int) -> *const VSSCRIPTAPI;
-}
