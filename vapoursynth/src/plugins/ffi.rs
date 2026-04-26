@@ -77,8 +77,6 @@ unsafe extern "C" fn get_frame(
 
                         write!(buf, "Error in Filter::get_frame_initial(): {}", err).unwrap();
 
-                        write!(buf, "{}", err).unwrap();
-
                         let buf = CString::new(buf.replace('\0', "\\0")).unwrap();
                         api.set_filter_error(buf.as_ptr(), frame_ctx);
 
@@ -127,13 +125,14 @@ pub(crate) unsafe extern "C" fn create<F: FilterFunction>(
 ) {
     let closure = move || {
         API::set(api);
+        let api = API::get_cached();
 
         let args = MapRef::from_ptr(in_);
         let mut out = MapRefMut::from_ptr(out);
         let core = CoreRef::from_ptr(core);
         let data = Box::from_raw(user_data as *mut FilterFunctionData<F>);
 
-        let filter = match data.filter_function.create(API::get_cached(), core, &args) {
+        let filter = match data.filter_function.create(api, core, &args) {
             Ok(Some(filter)) => Some(Box::new(filter)),
             Ok(None) => None,
             Err(err) => {
@@ -157,7 +156,7 @@ pub(crate) unsafe extern "C" fn create<F: FilterFunction>(
         if let Some(filter) = filter {
             // In v4, we need to get the video info before creating the filter
             let vi = filter
-                .video_info(API::get_cached(), core)
+                .video_info(api, core)
                 .into_iter()
                 .map(VideoInfo::ffi_type)
                 .collect::<Vec<_>>();
@@ -170,7 +169,7 @@ pub(crate) unsafe extern "C" fn create<F: FilterFunction>(
                 ptr::null()
             };
 
-            API::get_cached().create_video_filter(
+            api.create_video_filter(
                 out.deref_mut().deref_mut(),
                 data.name.as_ptr(),
                 vi_ptr,
@@ -182,9 +181,6 @@ pub(crate) unsafe extern "C" fn create<F: FilterFunction>(
                 Box::into_raw(filter) as *mut _,
                 core.ptr(),
             );
-
-            // Keep vi alive until create_video_filter returns
-            mem::forget(vi);
         }
 
         mem::forget(data);
