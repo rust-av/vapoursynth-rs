@@ -1,6 +1,10 @@
 # Changelog
 
-## v0.5.4 (2026-04-26)
+## v0.5.5 (2026-04-27)
+
+- Turn R73 compat flag on by default to avoid breaking change. This will be removed from the defaults in a future semver major release.
+
+## v0.5.4 (2026-04-26) [yanked]
 
 - Fix compat for Vapoursynth R74.
 
