@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.6 (2026-04-27)
+
+- Fix compatibility with Arch Linux packaging for Vapoursynth R75
+
 ## v0.5.5 (2026-04-27)
 
 - Turn R73 compat flag on by default to avoid breaking change. This will be removed from the defaults in a future semver major release.
