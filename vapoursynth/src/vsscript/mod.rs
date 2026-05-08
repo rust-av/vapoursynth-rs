@@ -1,6 +1,7 @@
 //! VapourSynth script-related things.
 
 use std::env;
+use std::process::Command;
 use std::ptr::NonNull;
 use std::sync::OnceLock;
 use std::sync::atomic::Ordering;
@@ -17,6 +18,37 @@ unsafe impl Sync for VSScriptAPI {}
 
 static VSSCRIPT_API_LOADER: OnceLock<Option<VSScriptAPILoader>> = OnceLock::new();
 
+fn discover_vsscript_path() -> Option<String> {
+    let output = Command::new("vapoursynth")
+        .arg("get-vsscript")
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let path = String::from_utf8(output.stdout).ok()?;
+    let path = path.trim();
+
+    (!path.is_empty()).then(|| path.to_owned())
+}
+
+fn candidate_paths(env_path: Option<String>, discovered_path: Option<String>) -> Vec<String> {
+    if let Some(path) = env_path {
+        return vec![path];
+    }
+
+    let mut candidates = Vec::with_capacity(1 + VSSCRIPT_LIB_NAMES.len());
+
+    if let Some(path) = discovered_path.filter(|path| !path.is_empty()) {
+        candidates.push(path);
+    }
+
+    candidates.extend(VSSCRIPT_LIB_NAMES.iter().map(|path| (*path).to_owned()));
+    candidates
+}
+
 impl VSScriptAPI {
     /// Retrieves the VSScript API.
     ///
@@ -27,13 +59,15 @@ impl VSScriptAPI {
         let handle = VSSCRIPT_API_LOADER
             .get_or_init(|| {
                 // Attempt opening the VSScript library
-                let loader = if let Ok(vsscript_path) = env::var(VSSCRIPT_PATH_VARIABLE) {
-                    unsafe { VSScriptAPILoader::new(vsscript_path) }.ok()
+                let env_path = env::var(VSSCRIPT_PATH_VARIABLE).ok();
+                let discovered_path = if env_path.is_some() {
+                    None
                 } else {
-                    VSSCRIPT_LIB_NAMES
-                        .iter()
-                        .find_map(|path| unsafe { VSScriptAPILoader::new(*path) }.ok())
-                }?;
+                    discover_vsscript_path()
+                };
+                let loader = candidate_paths(env_path, discovered_path)
+                    .into_iter()
+                    .find_map(|path| unsafe { VSScriptAPILoader::new(path.as_str()) }.ok())?;
 
                 let version = ffi::VSSCRIPT_API_MAJOR << 16 | ffi::VSSCRIPT_API_MINOR;
                 let handle =
