@@ -49,6 +49,7 @@ jobs:
         uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: 3.14
+          enable-cache: false
           activate-environment: ${{ matrix.version != '73' }}
 
       - name: Install VapourSynth Python Package
@@ -122,6 +123,7 @@ jobs:
         uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: 3.14
+          enable-cache: false
           activate-environment: ${{ matrix.version != '73' }}
 
       - name: Install VapourSynth Portable
