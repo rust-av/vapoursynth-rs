@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
         try:
             subprocess.run(
-                ["cargo", "test", "--verbose", "--features", features_string],
+                ["cargo", "test", "--features", features_string],
                 check=True,
             )
         except subprocess.CalledProcessError:
