@@ -6,7 +6,7 @@ jobs:
   clippy-rustfmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -43,12 +43,13 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: 3.14
+          enable-cache: false
           activate-environment: ${{ matrix.version != '73' }}
 
       - name: Install VapourSynth Python Package
@@ -79,11 +80,11 @@ jobs:
       - name: Run sample-plugin tests
         run: |
           cd sample-plugin
-          cargo build --verbose
-          cargo run ${{ matrix.version == '73' && '--features vsscript-r73-compat' }} --verbose --bin test
+          cargo build
+          cargo run ${{ matrix.version == '73' && '--features vsscript-r73-compat' }} --bin test
       - name: Run doc
         run: |
-          cargo doc --all-features --verbose
+          cargo doc --all-features
       - name: Copy index into the target directory
         if: matrix.toolchain == 'stable-x86_64-unknown-linux-gnu'
         run: |
@@ -116,12 +117,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           python-version: 3.14
+          enable-cache: false
           activate-environment: ${{ matrix.version != '73' }}
 
       - name: Install VapourSynth Portable
@@ -153,12 +155,12 @@ jobs:
       - name: Build sample-plugin
         run: |
           cd sample-plugin
-          cargo build --verbose
+          cargo build
       - name: Run sample-plugin tests
         # https://github.com/rust-lang/rust/issues/50176
         run: |
           $Env:Path += ";C:\Program Files\VapourSynth;"
           cd sample-plugin
-          cargo run --verbose --bin test
+          cargo run --bin test
       - name: Run doc
-        run: cargo doc --all-features --verbose
+        run: cargo doc --all-features
