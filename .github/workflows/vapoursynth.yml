@@ -19,6 +19,9 @@ jobs:
         run: cargo clippy --all-targets --package sample-plugin -- -D warnings
 
   unix-tests:
+    permissions:
+      contents: write # required for gh-pages deployment
+
     strategy:
       fail-fast: false
 
