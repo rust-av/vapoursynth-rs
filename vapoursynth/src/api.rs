@@ -25,6 +25,7 @@ static RAW_API: AtomicPtr<ffi::VSAPI> = AtomicPtr::new(ptr::null_mut());
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum MessageType {
     Debug,
+    Information,
     Warning,
     Critical,
 
@@ -965,6 +966,7 @@ impl MessageType {
     fn ffi_type(self) -> c_int {
         let rv = match self {
             MessageType::Debug => ffi::VSMessageType_mtDebug,
+            MessageType::Information => ffi::VSMessageType_mtInformation,
             MessageType::Warning => ffi::VSMessageType_mtWarning,
             MessageType::Critical => ffi::VSMessageType_mtCritical,
             MessageType::Fatal => ffi::VSMessageType_mtFatal,
@@ -977,6 +979,7 @@ impl MessageType {
     fn from_ffi_type(x: c_int) -> Option<Self> {
         match x {
             x if x == ffi::VSMessageType_mtDebug as c_int => Some(MessageType::Debug),
+            x if x == ffi::VSMessageType_mtInformation as c_int => Some(MessageType::Information),
             x if x == ffi::VSMessageType_mtWarning as c_int => Some(MessageType::Warning),
             x if x == ffi::VSMessageType_mtCritical as c_int => Some(MessageType::Critical),
             x if x == ffi::VSMessageType_mtFatal as c_int => Some(MessageType::Fatal),
