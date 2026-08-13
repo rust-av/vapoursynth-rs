@@ -1,12 +1,15 @@
 //! VapourSynth cores.
 
+use std::borrow::Cow;
 use std::ffi::{CStr, CString, NulError};
 use std::fmt;
 use std::marker::PhantomData;
+use std::os::raw::{c_char, c_int, c_void};
 use std::ptr::NonNull;
+use std::{mem, panic, process};
 use vapoursynth_sys as ffi;
 
-use crate::api::API;
+use crate::api::{API, MessageType};
 use crate::format::{ColorFamily, Format, FormatID, SampleType};
 use crate::plugin::Plugin;
 
@@ -166,6 +169,89 @@ impl<'core> CoreRef<'core> {
     #[inline]
     pub fn set_thread_count(&self, threads: i32) -> i32 {
         unsafe { API::get_cached().set_thread_count(threads, self.handle.as_ptr()) }
+    }
+
+    /// Installs a message handler on this core.
+    ///
+    /// The handler receives every message logged by the core, including diagnostics from filters
+    /// such as `bs.VideoSource`. It stays installed until [`LogHandle::remove`] is called or the
+    /// core is freed.
+    #[inline]
+    pub fn add_log_handler<F>(&self, callback: F) -> LogHandle<'core>
+    where
+        F: Fn(MessageType, &str) + Send + Sync + 'core,
+    {
+        unsafe extern "C" fn c_callback<'core, F>(
+            msg_type: c_int,
+            msg: *const c_char,
+            user_data: *mut c_void,
+        ) where
+            F: Fn(MessageType, &str) + Send + Sync + 'core,
+        {
+            let closure = panic::AssertUnwindSafe(move || {
+                let callback = Box::from_raw(user_data as *mut F);
+                let message_type =
+                    MessageType::from_ffi_type(msg_type).unwrap_or(MessageType::Debug);
+                let message = if msg.is_null() {
+                    Cow::Borrowed("")
+                } else {
+                    CStr::from_ptr(msg).to_string_lossy()
+                };
+
+                callback(message_type, message.as_ref());
+
+                mem::forget(callback);
+            });
+
+            if panic::catch_unwind(closure).is_err() {
+                process::abort();
+            }
+        }
+
+        unsafe extern "C" fn c_free<F>(user_data: *mut c_void) {
+            drop(Box::from_raw(user_data as *mut F))
+        }
+
+        let data = Box::new(callback);
+
+        let handle = unsafe {
+            API::get_cached().add_log_handler(
+                Some(c_callback::<'core, F>),
+                Some(c_free::<F>),
+                Box::into_raw(data) as *mut c_void,
+                self.handle.as_ptr(),
+            )
+        };
+
+        LogHandle {
+            handle: unsafe { NonNull::new_unchecked(handle) },
+            core: self.handle,
+            _owner: PhantomData,
+        }
+    }
+}
+
+/// A handle to a message handler installed with [`CoreRef::add_log_handler`].
+///
+/// The handler stays installed until it is removed with [`LogHandle::remove`] or the core is
+/// freed. Dropping the handle on its own does not remove the handler.
+#[derive(Debug)]
+pub struct LogHandle<'core> {
+    handle: NonNull<ffi::VSLogHandle>,
+    core: NonNull<ffi::VSCore>,
+    _owner: PhantomData<&'core ()>,
+}
+
+unsafe impl<'core> Send for LogHandle<'core> {}
+unsafe impl<'core> Sync for LogHandle<'core> {}
+
+impl<'core> LogHandle<'core> {
+    /// Removes the message handler, returning `true` if it was still installed.
+    #[inline]
+    pub fn remove(self) -> bool {
+        unsafe {
+            API::get_cached().remove_log_handler(self.handle.as_ptr(), self.core.as_ptr()) != 0
+        }
     }
 }
 

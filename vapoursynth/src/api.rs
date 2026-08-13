@@ -25,6 +25,7 @@ static RAW_API: AtomicPtr<ffi::VSAPI> = AtomicPtr::new(ptr::null_mut());
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum MessageType {
     Debug,
+    Information,
     Warning,
     Critical,
 
@@ -138,6 +139,35 @@ impl API {
             );
         }
         Ok(())
+    }
+
+    /// Installs a message handler on the given core. Returns a handle identifying it, or a null
+    /// pointer on failure.
+    ///
+    /// # Safety
+    /// The caller must ensure all pointers are valid.
+    #[inline]
+    pub(crate) unsafe fn add_log_handler(
+        self,
+        handler: ffi::VSLogHandler,
+        free: ffi::VSLogHandlerFree,
+        user_data: *mut c_void,
+        core: *mut ffi::VSCore,
+    ) -> *mut ffi::VSLogHandle {
+        (self.handle.as_ref().addLogHandler.unwrap())(handler, free, user_data, core)
+    }
+
+    /// Removes a previously installed message handler. Returns a non-zero value on success.
+    ///
+    /// # Safety
+    /// The caller must ensure all pointers are valid.
+    #[inline]
+    pub(crate) unsafe fn remove_log_handler(
+        self,
+        handle: *mut ffi::VSLogHandle,
+        core: *mut ffi::VSCore,
+    ) -> c_int {
+        (self.handle.as_ref().removeLogHandler.unwrap())(handle, core)
     }
 
     /// Frees `node`.
@@ -965,6 +995,7 @@ impl MessageType {
     fn ffi_type(self) -> c_int {
         let rv = match self {
             MessageType::Debug => ffi::VSMessageType_mtDebug,
+            MessageType::Information => ffi::VSMessageType_mtInformation,
             MessageType::Warning => ffi::VSMessageType_mtWarning,
             MessageType::Critical => ffi::VSMessageType_mtCritical,
             MessageType::Fatal => ffi::VSMessageType_mtFatal,
@@ -973,10 +1004,10 @@ impl MessageType {
     }
 
     #[inline]
-    #[expect(dead_code)]
-    fn from_ffi_type(x: c_int) -> Option<Self> {
+    pub(crate) fn from_ffi_type(x: c_int) -> Option<Self> {
         match x {
             x if x == ffi::VSMessageType_mtDebug as c_int => Some(MessageType::Debug),
+            x if x == ffi::VSMessageType_mtInformation as c_int => Some(MessageType::Information),
             x if x == ffi::VSMessageType_mtWarning as c_int => Some(MessageType::Warning),
             x if x == ffi::VSMessageType_mtCritical as c_int => Some(MessageType::Critical),
             x if x == ffi::VSMessageType_mtFatal as c_int => Some(MessageType::Fatal),
